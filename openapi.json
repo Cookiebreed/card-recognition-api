@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese) and Magic: The Gathering (English, German, French, Italian, Spanish). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish) and Star Wars: Unlimited (English, German, French, Italian, Spanish). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -72,6 +72,13 @@
                   "value": {
                     "image": "<base64-encoded JPEG or PNG>",
                     "tcg": "magic"
+                  }
+                },
+                "star_wars_unlimited": {
+                  "summary": "Star Wars: Unlimited",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "star_wars_unlimited"
                   }
                 },
                 "image_url": {
@@ -267,7 +274,8 @@
               "onepiece",
               "lorcana",
               "yugioh",
-              "magic"
+              "magic",
+              "star_wars_unlimited"
             ],
             "default": "pokemon",
             "description": "Which game the image shows."
@@ -356,7 +364,7 @@
       },
       "Card": {
         "type": "object",
-        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices. See the documentation for every field.",
+        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed. See the documentation for every field.",
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -372,7 +380,8 @@
               "onepiece",
               "lorcana",
               "yugioh",
-              "magic"
+              "magic",
+              "star_wars_unlimited"
             ],
             "description": "Present for every game except Pokémon."
           },
