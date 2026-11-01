@@ -12,12 +12,12 @@ export interface ServerOptions {
 
 const RECOGNIZE_DESCRIPTION = [
   "Identify trading cards in a photo with the NeoSatoshi card recognition API.",
-  "Games: Pokémon (default; several cards per photo, binder pages work), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG and Magic: The Gathering (one card per photo).",
+  "Games: Pokémon (default; several cards per photo, binder pages work), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering and Star Wars: Unlimited (one card per photo).",
   "Returns per card: name, language, set, number, rarity, Cardmarket product ID, daily Cardmarket prices in EUR (TCGplayer USD where available), confidence and alternatives.",
   "It does not grade card condition.",
   "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB), image_url (public https URL, forwarded to the API) or image_base64.",
   "Uses the API key in NEOSATOSHI_API_KEY; without it, the public demo key is used (10 detections per day per network).",
-  "Synchronous: one card usually takes 6 to 20 seconds.",
+  "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period.",
 ].join(" ");
 
 function errorResult(text: string) {

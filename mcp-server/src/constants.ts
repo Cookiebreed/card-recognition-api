@@ -15,7 +15,7 @@ export const DEMO_API_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f
 export const REQUEST_TIMEOUT_MS = 120_000;
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
-export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic"] as const;
+export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited"] as const;
 export type Tcg = (typeof TCG_VALUES)[number];
 
 export const SUPPORTED_GAMES = {
@@ -35,12 +35,13 @@ export const SUPPORTED_GAMES = {
       languages: ["en", "de", "fr", "it", "es", "pt"],
       cards_per_photo: "one",
     },
-    { tcg: "magic", name: "Magic: The Gathering", languages: ["en", "de"], cards_per_photo: "one" },
+    { tcg: "magic", name: "Magic: The Gathering", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "one" },
+    { tcg: "star_wars_unlimited", name: "Star Wars: Unlimited", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "one" },
   ],
   limits: {
     image_formats: ["JPEG", "PNG"],
     max_image_size: "12 MB",
-    request: "synchronous; one card usually takes 6 to 20 seconds; client timeout 120 seconds",
+    request: "one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds; client timeout 120 seconds",
     demo_key: "10 detections per day per network, no signup",
     billing: "own keys: one credit per detected card; images without a card are not charged",
   },

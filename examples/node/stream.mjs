@@ -3,7 +3,7 @@
 //
 // Usage: node stream.mjs <image_url> [tcg]
 //   image_url: public https link to a JPEG or PNG
-//   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic
+//   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited
 //
 // Streaming helps with Pokémon binder pages. The other games have one card per
 // photo, so there you get progress events, not a faster result.

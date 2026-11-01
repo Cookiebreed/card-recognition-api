@@ -40,7 +40,7 @@ test("lists both tools", async () => {
   assert.deepEqual(tools.map((t) => t.name).sort(), ["list_supported_games", "recognize_cards"]);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited"]);
 });
 
 test("recognize_cards sends base64 to the one endpoint and summarizes", async () => {

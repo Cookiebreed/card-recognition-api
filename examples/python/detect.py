@@ -4,7 +4,7 @@
 Usage:
     python3 detect.py <image.jpg|image.png> [tcg] [--json]
 
-    tcg:    pokemon (default), onepiece, lorcana, yugioh, magic
+    tcg:    pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited
     --json: also print the full JSON response
 
 Uses NEOSATOSHI_API_KEY, or the public demo key (10 detections per day per network).
@@ -20,7 +20,7 @@ import requests
 
 ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi"
 DEMO_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274"
-TCGS = ("pokemon", "onepiece", "lorcana", "yugioh", "magic")
+TCGS = ("pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited")
 
 
 class ApiError(Exception):

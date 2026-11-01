@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition MCP server
 
-MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh! and Magic: The Gathering cards in a photo and get set, number, rarity, Cardmarket ID and daily prices as JSON.
+MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering and Star Wars: Unlimited cards in a photo and get set, number, rarity, Cardmarket ID and daily prices as JSON.
 
 * Transport: stdio
 * npm package: `neosatoshi-card-mcp`, binary `neosatoshi-card-mcp`
@@ -25,7 +25,7 @@ Example summary line:
 1. Cinderace ex | Scarlet & Violet Black Star Promos (PR-SV) #163 | Promo | en | Cardmarket 796939 | trend 3.59 EUR | confidence 0.85 | 5 alternatives
 ```
 
-The API identifies cards; it does not grade condition. One card usually takes 6 to 20 seconds; the server waits up to 120 seconds.
+The API identifies cards; it does not grade condition. One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds. The client waits up to 120 seconds.
 
 ### `list_supported_games`
 

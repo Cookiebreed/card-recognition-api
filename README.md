@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition API
 
-Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh! and Magic: The Gathering: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices.
+Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering and Star Wars: Unlimited: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices.
 
 This repository contains runnable examples (curl, Python, Node.js), an MCP server for AI assistants, a Postman collection and a copy of the OpenAPI spec. The API is run by [NeoSatoshi](https://neosatoshi.com) (NeoGen Solutions GmbH, Bern, Switzerland).
 
@@ -56,6 +56,7 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 | Disney Lorcana | `lorcana` | English, German, French, Italian | One |
 | Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | One |
 | Magic: The Gathering | `magic` | English, German, French, Italian, Spanish | One |
+| Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | One |
 
 ## Request
 
@@ -69,7 +70,7 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 |---|---|---|
 | `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB. |
 | `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
-| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh` or `magic`. |
+| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic` or `star_wars_unlimited`. |
 | `stream` | no | `true` for Server-Sent Events, see [Streaming](#streaming). The header `Accept: text/event-stream` does the same. |
 
 ## Response
@@ -128,7 +129,7 @@ More recordings:
 | `demo` | Public demo key only, instead of credits: `limit_per_day` and `remaining_today` for your network. |
 | `name` | Card name as printed. |
 | `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
-| `tcg` | `onepiece`, `lorcana`, `yugioh` or `magic`. Absent for Pokémon. |
+| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic` or `star_wars_unlimited`. Absent for Pokémon. |
 | `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
 | `rarity` | Rarity as named by the game. |
 | `cardmarket_id` | Cardmarket product ID, or null. |
@@ -219,7 +220,7 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
 
 **Can it recognise several cards in one photo?**
-For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh! and Magic, send one card per photo.
+For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh!, Magic and Star Wars: Unlimited, send one card per photo.
 
 **Does it return prices?**
 Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`.
