@@ -1,0 +1,362 @@
+{
+  "info": {
+    "_postman_id": "6f1c2b1e-4d3a-4b8e-9a51-2c7d0e9f3a10",
+    "name": "NeoSatoshi Card Recognition API",
+    "description": "Send a photo of trading cards (Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering), get JSON with set, number, rarity, Cardmarket ID and daily prices.\n\napiKey defaults to the public demo key (10 detections per day per network). Replace it with your own key from https://neosatoshi.com/dashboard/settings/settings#api-keys .\n\nThe call is synchronous: set the Postman request timeout to at least 120 s. Docs: https://neosatoshi.com/developers/detection-api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://europe-west1-neosatoshi.cloudfunctions.net",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274",
+      "type": "string"
+    },
+    {
+      "key": "imageBase64",
+      "value": "PASTE_BASE64_JPEG_OR_PNG_HERE",
+      "type": "string"
+    },
+    {
+      "key": "imageUrl",
+      "value": "https://example.com/your-card-photo.jpg",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Base64 image",
+      "item": [
+        {
+          "name": "Detect Pokémon (several cards per photo) (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"pokemon\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=pokemon."
+          }
+        },
+        {
+          "name": "Detect One Piece (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"onepiece\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=onepiece."
+          }
+        },
+        {
+          "name": "Detect Disney Lorcana (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"lorcana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=lorcana."
+          }
+        },
+        {
+          "name": "Detect Yu-Gi-Oh! TCG (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"yugioh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=yugioh."
+          }
+        },
+        {
+          "name": "Detect Magic: The Gathering (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"magic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=magic."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Image URL",
+      "item": [
+        {
+          "name": "Detect Pokémon (several cards per photo) (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"pokemon\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=pokemon."
+          }
+        },
+        {
+          "name": "Detect One Piece (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"onepiece\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=onepiece."
+          }
+        },
+        {
+          "name": "Detect Disney Lorcana (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"lorcana\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=lorcana."
+          }
+        },
+        {
+          "name": "Detect Yu-Gi-Oh! TCG (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"yugioh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=yugioh."
+          }
+        },
+        {
+          "name": "Detect Magic: The Gathering (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"magic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=magic."
+          }
+        }
+      ]
+    }
+  ]
+}

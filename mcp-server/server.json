@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Cookiebreed/card-recognition-mcp",
+  "title": "NeoSatoshi Card Recognition",
+  "description": "Identify Pokemon, One Piece, Lorcana, Yu-Gi-Oh! and Magic cards in a photo, with Cardmarket prices.",
+  "version": "0.1.0",
+  "websiteUrl": "https://neosatoshi.com/developers/detection-api",
+  "repository": {
+    "url": "https://github.com/Cookiebreed/card-recognition-api",
+    "source": "github",
+    "subfolder": "mcp-server"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "neosatoshi-card-mcp",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "NEOSATOSHI_API_KEY",
+          "description": "Your NeoSatoshi API key. Optional: without it the public demo key is used (10 detections per day per network).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "NEOSATOSHI_ALLOWED_DIRS",
+          "description": "Optional list of directories the server may read images from, separated by ':' (';' on Windows). Unset means any readable image file.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

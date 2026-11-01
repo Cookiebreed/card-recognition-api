@@ -1,0 +1,239 @@
+# NeoSatoshi Card Recognition API
+
+Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh! and Magic: The Gathering: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices.
+
+This repository contains runnable examples (curl, Python, Node.js), an MCP server for AI assistants, a Postman collection and a copy of the OpenAPI spec. The API is run by [NeoSatoshi](https://neosatoshi.com) (NeoGen Solutions GmbH, Bern, Switzerland).
+
+* Endpoint: `POST https://europe-west1-neosatoshi.cloudfunctions.net/detectApi`
+* Auth: `Authorization: Bearer <API_KEY>`
+* Public demo key (no signup, 10 detections per day per network): `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274`
+* Docs: https://neosatoshi.com/developers/detection-api
+* OpenAPI: [openapi.json](openapi.json) (also at https://neosatoshi.com/openapi.json)
+
+## Quickstart (30 seconds)
+
+From a clone of this repository (or use any photo of a card). Works on macOS and Linux as is:
+
+```bash
+{ printf '{"tcg":"pokemon","image":"'; base64 < examples/images/example_api_single.jpg | tr -d '\n'; printf '"}'; } > body.json
+
+curl -sS --max-time 120 -X POST https://europe-west1-neosatoshi.cloudfunctions.net/detectApi \
+  -H "Authorization: Bearer nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274" \
+  -H "Content-Type: application/json" \
+  --data-binary @body.json
+```
+
+The call is synchronous: one card usually takes 6 to 20 seconds. Keep the client timeout at 120 seconds or more.
+
+Ready-made scripts that print a per-card summary:
+
+```bash
+./examples/curl/detect.sh examples/images/example_api_single.jpg
+python3 examples/python/detect.py examples/images/example_api_lorcana_de.jpg lorcana
+node examples/node/detect.mjs examples/images/example_api_multi.jpg pokemon --json
+```
+
+All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
+
+## Supported games and languages
+
+| Game | `tcg` value | Card languages | Cards per photo |
+|---|---|---|---|
+| Pokémon TCG | `pokemon` (default) | English, German, French, Italian, Spanish, Japanese, Korean, Simplified Chinese | Several (binder pages work, best up to about 20) |
+| One Piece Card Game | `onepiece` | English, Japanese | One |
+| Disney Lorcana | `lorcana` | English, German, French, Italian | One |
+| Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | One |
+| Magic: The Gathering | `magic` | English, German | One |
+
+## Request
+
+`POST` with a JSON body:
+
+```json
+{ "image": "<base64 JPEG or PNG, max 12 MB>", "tcg": "pokemon" }
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB. |
+| `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
+| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh` or `magic`. |
+
+## Response
+
+Recorded response for [examples/images/example_api_single.jpg](examples/images/example_api_single.jpg) (Pokémon, Cinderace ex):
+
+```json
+{
+  "request_id": "req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5",
+  "count": 1,
+  "cards": [
+    {
+      "name": "Cinderace ex",
+      "name_ja": null,
+      "name_ko": null,
+      "name_zh": null,
+      "language": "en",
+      "set": { "id": "svp", "ptcgo_code": "PR-SV", "name": "Scarlet & Violet Black Star Promos", "number": "163" },
+      "rarity": "Promo",
+      "cardmarket_id": 796939,
+      "reverse_holo": false,
+      "first_edition": false,
+      "special_variant": null,
+      "prices": { "cardmarket": { "trend": 3.59, "low": 1, "avg7": 3.71, "avg30": 4.1, "currency": "EUR" } },
+      "images": {
+        "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
+        "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
+      },
+      "confidence": 0.85,
+      "image_quality": { "blurred": false, "unusual_dimensions": false },
+      "alternatives": [
+        { "name": "Cinderace ex", "set": "Stellar Crown", "number": "28", "score": 1, "possible_variants": null }
+      ]
+    }
+  ],
+  "demo": { "limit_per_day": 10, "remaining_today": 9 }
+}
+```
+
+(Shortened; the full recording is in [examples/responses/pokemon_single_cinderace.json](examples/responses/pokemon_single_cinderace.json).) For the 9 card binder page in [example_api_multi.jpg](examples/images/example_api_multi.jpg) the API returns every card in `cards`, one entry each.
+
+More recordings:
+
+* [lorcana_en_genie.json](examples/responses/lorcana_en_genie.json): Disney Lorcana, English, photo [example_api_lorcana.jpg](examples/images/example_api_lorcana.jpg)
+* [lorcana_de_blume.json](examples/responses/lorcana_de_blume.json): Disney Lorcana, German (foil detected), photo [example_api_lorcana_de.jpg](examples/images/example_api_lorcana_de.jpg)
+* [catalog-shape/](examples/responses/catalog-shape/): One Piece, Lorcana, Yu-Gi-Oh! and Magic responses recorded from clean catalog images, included only to show the response shape per game (the catalog images themselves are not in this repo)
+
+### Fields shared by every game
+
+| Field | Description |
+|---|---|
+| `request_id` | ID of the request, quote it in support questions. |
+| `count` | Number of detected cards. |
+| `cards[]` | One object per detected card (see below). |
+| `credits.remaining` | Remaining card scans of your key's plan (own keys only). |
+| `demo` | Public demo key only, instead of credits: `limit_per_day` and `remaining_today` for your network. |
+| `name` | Card name as printed. |
+| `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
+| `tcg` | `onepiece`, `lorcana`, `yugioh` or `magic`. Absent for Pokémon. |
+| `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
+| `rarity` | Rarity as named by the game. |
+| `cardmarket_id` | Cardmarket product ID, or null. |
+| `prices.cardmarket` | `trend`, `low`, `avg7`, `avg30` in EUR, updated daily. |
+| `prices.tcgplayer` | TCGplayer prices in USD, where available. |
+| `images` | `small` and `large` reference image URLs. |
+| `confidence` | 0 to 1. |
+| `image_quality` | `blurred`, `unusual_dimensions` (booleans about the photo). |
+| `alternatives[]` | Other likely matches for a manual pick. The shape differs per game. |
+
+A missing price is `null`, never `0`.
+
+### Game-specific fields
+
+| Game | Fields |
+|---|---|
+| Pokémon | `name_ja`, `name_ko`, `name_zh`, `reverse_holo`, `first_edition`, `special_variant` |
+| One Piece | `card_id` (for example `OP01-003`) |
+| Disney Lorcana | `version`, `full_name`, `name_en`, `prices.cardmarket_foil` |
+| Yu-Gi-Oh! TCG | `passcode`, `set.code`, `edition`, `price_versions`, `*_unconfirmed` flags (for example `print_unconfirmed`: the exact print could not be confirmed, check `alternatives`) |
+| Magic: The Gathering | printing (`set.code`, `set.number`, `print_unconfirmed`), `prices.cardmarket_foil`, TCGplayer foil price (`prices.tcgplayer.foil`) |
+
+The full field reference is in the [documentation](https://neosatoshi.com/developers/detection-api).
+
+## Errors
+
+Errors return JSON with `error` (a code) and usually `message`.
+
+| HTTP | `error` | Meaning |
+|---|---|---|
+| 400 | `missing_image`, `bad_image`, `image_too_large`, `unsupported_image`, `unsupported_tcg` | Fix the request. Only JPEG and PNG up to 12 MB. |
+| 400 | `bad_image_url`, `image_url_fetch_failed` | Only with `image_url`: the URL is invalid or could not be fetched. |
+| 401 | `missing_api_key`, `invalid_api_key` | Check the `Authorization` header. |
+| 402 | `out_of_credits` | The plan has no card scans left. |
+| 405 | `method_not_allowed` | Only `POST`. |
+| 422 | `no_card_detected` | No card recognised. Not charged. |
+| 429 | `rate_limited`, `demo_limit_reached` | Slow down, or the demo key's 10 per day per network are used up. |
+| 502 | (backend step failed) | Retry. |
+| 504 | `detection_timeout` | Often a cold start. Retry. |
+
+## Limits and pricing
+
+* Images: JPEG or PNG, at most 12 MB. Pokémon: several cards per photo (best up to about 20). Other games: one card per photo.
+* Synchronous: one card usually takes 6 to 20 seconds. Use a client timeout of at least 120 seconds.
+* Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
+* Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
+* The API identifies cards. It does not grade card condition.
+
+## When to use this instead of a general vision LLM
+
+A general vision model can often read a card name from a photo. Use this API when you need:
+
+* **Structured catalog IDs**: set ID, set code and number in a fixed JSON shape, matched against a card database, plus alternatives when the print is ambiguous.
+* **Cardmarket product IDs and daily prices**: `cardmarket_id` and Cardmarket trend, low, 7 day and 30 day averages (TCGplayer where available). General vision LLMs do not return these.
+* **Predictable per-card cost**: one credit per detected card, nothing for images without a card.
+
+If you only need a rough description of a photo, a general vision LLM may be enough.
+
+## MCP server (Claude, Cursor, Codex and other AI assistants)
+
+[mcp-server/](mcp-server/) is a stdio MCP server with two tools: `recognize_cards` (local file, https URL or base64) and `list_supported_games`. Quick setup for Claude Code:
+
+```bash
+claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp
+```
+
+Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mcp-server/README.md) for Claude Desktop, Cursor and Codex, and for the file access restriction `NEOSATOSHI_ALLOWED_DIRS`.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| [examples/curl/detect.sh](examples/curl/detect.sh) | Bash and curl, summary via `jq` if installed |
+| [examples/python/detect.py](examples/python/detect.py) | Python with `requests` |
+| [examples/python/batch_to_csv.py](examples/python/batch_to_csv.py) | Process a folder, write a CSV (name, set, number, rarity, language, cardmarket_id, Cardmarket trend) |
+| [examples/node/detect.mjs](examples/node/detect.mjs) | Node.js 18+, built-in `fetch`, no dependencies |
+| [examples/images/](examples/images/) | Test photos (testing the API only) |
+| [examples/responses/](examples/responses/) | Recorded API responses |
+| [mcp-server/](mcp-server/) | MCP server (TypeScript) |
+| [postman/](postman/) | Postman collection v2.1 |
+| [openapi.json](openapi.json) | OpenAPI 3.1 spec |
+| [llms.txt](llms.txt) | Plain-text summary for LLMs |
+
+## FAQ
+
+**Is there a free API to identify Pokémon cards from a photo?**
+Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
+
+**Can it recognise several cards in one photo?**
+For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh! and Magic, send one card per photo.
+
+**Does it return prices?**
+Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`.
+
+**Does it recognise Japanese, Korean or Chinese cards?**
+Pokémon: Japanese, Korean and Simplified Chinese, besides English, German, French, Italian and Spanish. One Piece: English and Japanese. See the table above for the other games.
+
+**Does it grade card condition?**
+No. It identifies which card it is (set, number, rarity, language, variant fields). It does not judge condition.
+
+**Does it support Yu-Gi-Oh! OCG (Asian) cards?**
+No, only the TCG in English, German, French, Italian, Spanish and Portuguese.
+
+**How long does a request take?**
+It is synchronous; one card usually takes 6 to 20 seconds. Use a 120 second client timeout. 502 and 504 can be retried.
+
+**What does it cost?**
+One credit per detected card, from the plan's monthly card scans. Images without a card are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.
+
+**Can I send an image URL instead of base64?**
+Yes, send `"image_url": "https://..."` instead of `"image"`. The URL must be public https and point to a JPEG or PNG of at most 12 MB.
+
+**Can AI agents call it directly?**
+Yes. Agents may call the endpoint with the demo key, use the [OpenAPI spec](openapi.json), or use the [MCP server](mcp-server/).
+
+**Where do I get support?**
+api@neosatoshi.com . Include the `request_id` from the response.
+
+## License and terms
+
+The code in this repository is MIT licensed (see [LICENSE](LICENSE)). The API itself is a commercial service governed by https://neosatoshi.com/termsofuse . The example images in [examples/images/](examples/images/) may only be used for testing the API.

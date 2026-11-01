@@ -1,0 +1,26 @@
+# Smithery configuration (https://smithery.ai). Local stdio server.
+# The server reads the API key from NEOSATOSHI_API_KEY; without one it uses the public demo key
+# (10 detections per day per network).
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        description: "NeoSatoshi API key (optional). Without it the public demo key is used, 10 detections per day per network."
+      allowedDirs:
+        type: string
+        description: "Optional list of directories images may be read from, separated by ':' (';' on Windows)."
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'neosatoshi-card-mcp'],
+      env: Object.assign(
+        {},
+        config.apiKey ? { NEOSATOSHI_API_KEY: config.apiKey } : {},
+        config.allowedDirs ? { NEOSATOSHI_ALLOWED_DIRS: config.allowedDirs } : {}
+      )
+    })
+  exampleConfig: {}

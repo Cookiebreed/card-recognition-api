@@ -1,0 +1,57 @@
+{
+  "name": "neosatoshi-card-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh! and Magic: The Gathering cards from a photo, with set, number, rarity, Cardmarket ID and daily prices.",
+  "mcpName": "io.github.Cookiebreed/card-recognition-mcp",
+  "type": "module",
+  "bin": {
+    "neosatoshi-card-mcp": "dist/index.js"
+  },
+  "main": "dist/server.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/chmod-bin.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build && node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "trading-cards",
+    "card-recognition",
+    "pokemon",
+    "one-piece",
+    "lorcana",
+    "yugioh",
+    "magic-the-gathering",
+    "cardmarket",
+    "tcg"
+  ],
+  "homepage": "https://neosatoshi.com/developers/detection-api",
+  "author": "NeoGen Solutions GmbH <api@neosatoshi.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cookiebreed/card-recognition-api.git",
+    "directory": "mcp-server"
+  },
+  "bugs": {
+    "email": "api@neosatoshi.com"
+  }
+}

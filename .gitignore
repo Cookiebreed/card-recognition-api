@@ -1,0 +1,10 @@
+node_modules/
+dist/
+body.json
+*.log
+.DS_Store
+.env
+.env.*
+cards.csv
+__pycache__/
+*.pyc

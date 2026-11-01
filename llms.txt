@@ -1,0 +1,51 @@
+# NeoSatoshi Card Recognition API
+
+> Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh! and Magic: The Gathering: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices. Made by NeoSatoshi (NeoGen Solutions GmbH, Bern, Switzerland).
+
+## Call
+
+* Endpoint: POST https://europe-west1-neosatoshi.cloudfunctions.net/detectApi
+* Header: Authorization: Bearer <API_KEY>
+* Public demo key (intentionally public, no signup, 10 detections per day per network): nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274
+* Body (JSON): {"image": "<base64 JPEG or PNG, max 12 MB>", "tcg": "pokemon"}
+* Alternative body: {"image_url": "https://...", "tcg": "pokemon"} (public https URL to a JPEG or PNG, max 12 MB)
+* tcg values: pokemon (default), onepiece, lorcana, yugioh, magic
+* Synchronous. One card usually takes 6 to 20 seconds. Client timeout: at least 120 seconds.
+
+## Games and card languages
+
+* Pokémon (pokemon): English, German, French, Italian, Spanish, Japanese, Korean, Simplified Chinese. Several cards per photo, binder pages work, best up to about 20.
+* One Piece (onepiece): English, Japanese. One card per photo.
+* Disney Lorcana (lorcana): English, German, French, Italian. One card per photo.
+* Yu-Gi-Oh! TCG (yugioh): English, German, French, Italian, Spanish, Portuguese. Not OCG. One card per photo.
+* Magic: The Gathering (magic): English, German. One card per photo.
+
+## Response
+
+{request_id, count, cards[], credits{remaining}} for your own key; the public demo key gets demo{limit_per_day, remaining_today} instead of credits.
+
+Each card: name, language, tcg (absent for Pokémon), set{id, ptcgo_code or code, name, number}, rarity, cardmarket_id, prices{cardmarket{trend, low, avg7, avg30, currency EUR}, tcgplayer (USD, where available)}, images{small, large}, confidence (0 to 1), image_quality{blurred, unusual_dimensions}, alternatives[].
+
+Game-specific: Pokémon name_ja, name_ko, name_zh, reverse_holo, first_edition, special_variant. One Piece card_id (for example OP01-003). Lorcana version, full_name, name_en, prices.cardmarket_foil. Yu-Gi-Oh! passcode, set.code, edition, price_versions, *_unconfirmed flags. Magic printing, prices.cardmarket_foil, TCGplayer foil price.
+
+A missing price is null, never 0.
+
+## Errors
+
+JSON {error, message}. 400 missing_image, bad_image, image_too_large, unsupported_image, unsupported_tcg, bad_image_url, image_url_fetch_failed. 401 missing_api_key, invalid_api_key. 402 out_of_credits. 405 method_not_allowed. 422 no_card_detected (not charged). 429 rate_limited, demo_limit_reached. 502 backend step failed (retry). 504 detection_timeout (retry).
+
+## Pricing
+
+Own API keys: dashboard settings at https://neosatoshi.com/dashboard/settings/settings#api-keys, any paid plan (smallest: Start-Up, 19 per month, 1,000 card scans included). One credit per detected card. Images without a card are not charged.
+
+## Not supported
+
+Card condition grading. The API identifies cards; it does not judge condition.
+
+## Links
+
+* Documentation: https://neosatoshi.com/developers/detection-api
+* OpenAPI spec: https://neosatoshi.com/openapi.json (copy in this repository: openapi.json)
+* MCP server: mcp-server/ in this repository (npm: neosatoshi-card-mcp)
+* Terms: https://neosatoshi.com/termsofuse
+* Contact: api@neosatoshi.com

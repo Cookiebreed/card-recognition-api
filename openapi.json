@@ -1,0 +1,458 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NeoSatoshi Card Recognition API",
+    "version": "1.0.0",
+    "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese) and Magic: The Gathering (English, German). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nThe call is synchronous. Use a client timeout of at least 120 seconds; a warm request for one card usually takes about 10 to 20 seconds.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "contact": {
+      "name": "NeoSatoshi API",
+      "email": "api@neosatoshi.com",
+      "url": "https://neosatoshi.com/developers/detection-api"
+    },
+    "termsOfService": "https://neosatoshi.com/termsofuse"
+  },
+  "externalDocs": {
+    "description": "Documentation, live examples and a test box",
+    "url": "https://neosatoshi.com/developers/detection-api"
+  },
+  "servers": [
+    {
+      "url": "https://europe-west1-neosatoshi.cloudfunctions.net"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/detectApi": {
+      "post": {
+        "operationId": "detectCards",
+        "summary": "Detect the trading cards in one image",
+        "description": "Pokémon is the default. Send \"tcg\" for the other games. Every confidently detected card comes back in `cards`, each with alternatives for a manual pick.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectRequest"
+              },
+              "examples": {
+                "pokemon": {
+                  "summary": "Pokémon (default, several cards per photo)",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>"
+                  }
+                },
+                "onepiece": {
+                  "summary": "One Piece",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "onepiece"
+                  }
+                },
+                "lorcana": {
+                  "summary": "Disney Lorcana",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "lorcana"
+                  }
+                },
+                "yugioh": {
+                  "summary": "Yu-Gi-Oh! TCG",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "yugioh"
+                  }
+                },
+                "magic": {
+                  "summary": "Magic: The Gathering",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "magic"
+                  }
+                },
+                "image_url": {
+                  "summary": "Image by URL (Lorcana)",
+                  "value": {
+                    "image_url": "https://neosatoshi.com/static/images/example_api_lorcana.jpg",
+                    "tcg": "lorcana"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The detected cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectResponse"
+                },
+                "example": {
+                  "request_id": "req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5",
+                  "count": 1,
+                  "cards": [
+                    {
+                      "name": "Cinderace ex",
+                      "language": "en",
+                      "set": {
+                        "id": "svp",
+                        "ptcgo_code": "PR-SV",
+                        "name": "Scarlet & Violet Black Star Promos",
+                        "number": "163"
+                      },
+                      "rarity": "Promo",
+                      "cardmarket_id": 796939,
+                      "reverse_holo": false,
+                      "first_edition": false,
+                      "prices": {
+                        "cardmarket": {
+                          "trend": 3.59,
+                          "low": 1,
+                          "avg7": 3.71,
+                          "avg30": 4.1,
+                          "currency": "EUR"
+                        }
+                      },
+                      "images": {
+                        "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
+                        "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
+                      },
+                      "confidence": 0.85,
+                      "image_quality": {
+                        "blurred": false,
+                        "unusual_dimensions": false
+                      },
+                      "alternatives": [
+                        {
+                          "name": "Cinderace ex",
+                          "set": "Stellar Crown",
+                          "number": "28",
+                          "score": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "demo": {
+                    "limit_per_day": 10,
+                    "remaining_today": 9
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "missing_image, ambiguous_image (both image and image_url), bad_image, image_too_large (over 12 MB), unsupported_image (only JPEG and PNG), unsupported_tcg, bad_image_url (not a public https URL) or image_url_fetch_failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "missing_api_key or invalid_api_key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "out_of_credits: the key's plan has no card scans left.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "method_not_allowed: only POST.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "no_card_detected: no card was recognised. Nothing is charged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "A backend step failed (credit_service_unavailable, upload_init_failed, upload_failed, detection_failed). Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "detection_timeout, often a cold start. Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your API key, or the public demo key nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274 for testing."
+      }
+    },
+    "schemas": {
+      "DetectRequest": {
+        "type": "object",
+        "description": "Send the image either as base64 in \"image\" or as a public https link in \"image_url\", not both.",
+        "properties": {
+          "image": {
+            "type": "string",
+            "contentEncoding": "base64",
+            "description": "Base64-encoded JPEG or PNG, at most 12 MB. Pokémon: one or more cards (binder pages work, best up to about 20 cards). Other games: one card per image."
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Public https link to a JPEG or PNG, at most 12 MB, up to 3 redirects. Private, internal and non-https addresses are refused."
+          },
+          "tcg": {
+            "type": "string",
+            "enum": [
+              "pokemon",
+              "onepiece",
+              "lorcana",
+              "yugioh",
+              "magic"
+            ],
+            "default": "pokemon",
+            "description": "Which game the image shows."
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "image"
+            ]
+          },
+          {
+            "required": [
+              "image_url"
+            ]
+          }
+        ]
+      },
+      "DetectResponse": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "count",
+          "cards"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of detected cards."
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Card"
+            }
+          },
+          "credits": {
+            "type": "object",
+            "properties": {
+              "remaining": {
+                "type": "integer"
+              }
+            },
+            "description": "Your account's remaining card scans. Not sent for the public demo key."
+          },
+          "demo": {
+            "type": "object",
+            "description": "Only for the public demo key, in place of credits.",
+            "properties": {
+              "limit_per_day": {
+                "type": "integer"
+              },
+              "remaining_today": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "Card": {
+        "type": "object",
+        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices. See the documentation for every field.",
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string",
+            "description": "Card language, for example en, de, fr, it, es, pt, ja, ko, zh."
+          },
+          "tcg": {
+            "type": "string",
+            "enum": [
+              "onepiece",
+              "lorcana",
+              "yugioh",
+              "magic"
+            ],
+            "description": "Present for every game except Pokémon."
+          },
+          "set": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ptcgo_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Yu-Gi-Oh! printed set code, for example ROTA-DE024."
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "rarity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cardmarket_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Cardmarket product ID."
+          },
+          "prices": {
+            "type": "object",
+            "description": "cardmarket in EUR (trend, low, avg7, avg30), tcgplayer in USD where available. A missing price is null, never 0.",
+            "additionalProperties": true
+          },
+          "images": {
+            "type": "object",
+            "properties": {
+              "small": {
+                "type": "string"
+              },
+              "large": {
+                "type": "string"
+              }
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "image_quality": {
+            "type": "object",
+            "properties": {
+              "blurred": {
+                "type": "boolean"
+              },
+              "unusual_dimensions": {
+                "type": "boolean"
+              }
+            }
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Other likely matches for a manual pick."
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "docs": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
