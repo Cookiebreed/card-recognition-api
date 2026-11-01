@@ -355,6 +355,37 @@
             },
             "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=magic."
           }
+        },
+        {
+          "name": "Stream Pokémon cards as Server-Sent Events (image URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"https://neosatoshi.com/static/images/example_api_multi.jpg\",\n  \"tcg\": \"pokemon\",\n  \"stream\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Each card arrives as an event as soon as it is recognised, then done with the full result."
+          }
         }
       ]
     }

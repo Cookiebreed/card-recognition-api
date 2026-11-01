@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese) and Magic: The Gathering (English, German). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nThe call is synchronous. Use a client timeout of at least 120 seconds; a warm request for one card usually takes about 10 to 20 seconds.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese) and Magic: The Gathering (English, German, French, Italian, Spanish). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -87,7 +87,7 @@
         },
         "responses": {
           "200": {
-            "description": "The detected cards.",
+            "description": "The detected cards: one JSON body, or with \"stream\": true an event stream.",
             "content": {
               "application/json": {
                 "schema": {
@@ -143,6 +143,13 @@
                     "remaining_today": 9
                   }
                 }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Server-Sent Events, each \"event: <name>\" plus one \"data: <JSON>\" line. Events in order: accepted (StreamAccepted), progress (StreamProgress, any number), card (StreamCard, one per card, index 0, 1, 2 and so on, in the order the cards finished, not left to right in the photo), then exactly one final event: done (DetectResponse, the same body as the JSON 200) or error (StreamError). A \": keep-alive\" comment comes every 15 seconds. Use the cards in done as the final result: their alternatives can be shorter than in the card event. Treat a repeated index as a replacement. No id and no retry fields: do not reconnect automatically, a new request is a new, charged detection. If the connection ends without a final event the outcome is unknown and cards may have been charged. Browsers: EventSource cannot POST, read the response with fetch."
+                },
+                "example": "event: accepted\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"tcg\":\"pokemon\"}\n\nevent: progress\ndata: {\"stage\":\"detecting\",\"elapsed_ms\":2140}\n\nevent: card\ndata: {\"index\":0,\"card\":{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939}}\n\n: keep-alive\n\nevent: progress\ndata: {\"stage\":\"finalizing\",\"elapsed_ms\":9870}\n\nevent: done\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"count\":1,\"cards\":[{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939}],\"credits\":{\"remaining\":1234}}\n\n"
               }
             }
           },
@@ -167,7 +174,7 @@
             }
           },
           "402": {
-            "description": "out_of_credits: the key's plan has no card scans left.",
+            "description": "out_of_credits: the key's plan has no card scans left, including when the scans ran out before any card in the image was processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -207,7 +214,7 @@
             }
           },
           "502": {
-            "description": "A backend step failed (credit_service_unavailable, upload_init_failed, upload_failed, detection_failed). Retry.",
+            "description": "A backend step failed (credit_service_unavailable, upload_init_failed, upload_failed, detection_failed). Retry. Also when the detection pipeline failed before any card was processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -264,6 +271,11 @@
             ],
             "default": "pokemon",
             "description": "Which game the image shows."
+          },
+          "stream": {
+            "type": "boolean",
+            "default": false,
+            "description": "true answers with Server-Sent Events (text/event-stream) instead of one JSON body, the same as the header Accept: text/event-stream. A boolean here wins over the header. Costs the same."
           }
         },
         "oneOf": [
@@ -318,6 +330,25 @@
               },
               "remaining_today": {
                 "type": "integer"
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "description": "Only when the image was processed in part. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "credits_ran_out",
+                    "incomplete"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -452,6 +483,91 @@
             "type": "string"
           }
         }
+      },
+      "StreamAccepted": {
+        "type": "object",
+        "description": "Data of the first stream event, accepted: the image is uploaded and detection starts.",
+        "required": [
+          "request_id",
+          "tcg"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "tcg": {
+            "type": "string"
+          }
+        }
+      },
+      "StreamProgress": {
+        "type": "object",
+        "description": "Data of a progress event. Ignore stages you do not know.",
+        "required": [
+          "stage",
+          "elapsed_ms"
+        ],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "description": "detecting: the detection started. finalizing: all cards are in, the final response is being prepared.",
+            "examples": [
+              "detecting",
+              "finalizing"
+            ]
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "description": "Milliseconds since the request arrived."
+          }
+        }
+      },
+      "StreamCard": {
+        "type": "object",
+        "description": "Data of a card event: one detected card as soon as it is matched.",
+        "required": [
+          "index",
+          "card"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The position of this card in the cards of the done event."
+          },
+          "card": {
+            "$ref": "#/components/schemas/Card"
+          }
+        }
+      },
+      "StreamError": {
+        "type": "object",
+        "description": "Data of the final error event: the HTTP status and the JSON error body the call would have returned without streaming, always with a message. Values: 402 out_of_credits, 422 no_card_detected, 502 detection_failed, 504 detection_timeout (with credits when the balance could be read).",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Error"
+          },
+          {
+            "type": "object",
+            "required": [
+              "status",
+              "message"
+            ],
+            "properties": {
+              "status": {
+                "type": "integer"
+              },
+              "credits": {
+                "type": "object",
+                "properties": {
+                  "remaining": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

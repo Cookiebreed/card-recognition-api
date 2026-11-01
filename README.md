@@ -23,7 +23,7 @@ curl -sS --max-time 120 -X POST https://europe-west1-neosatoshi.cloudfunctions.n
   --data-binary @body.json
 ```
 
-The call is synchronous: one card usually takes 6 to 20 seconds. Keep the client timeout at 120 seconds or more.
+One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds. Keep the client timeout at 120 seconds or more.
 
 Ready-made scripts that print a per-card summary:
 
@@ -35,6 +35,18 @@ node examples/node/detect.mjs examples/images/example_api_multi.jpg pokemon --js
 
 All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
 
+## Streaming
+
+Add `"stream": true` to get Server-Sent Events: each card as soon as it is recognised, then the same result as a normal call, at the same cost. On a binder page with 9 cards the first card came after about 6 seconds and all nine after about 17. The games with one card per photo get progress events, not a faster result.
+
+```bash
+./examples/curl/stream.sh https://neosatoshi.com/static/images/example_api_multi.jpg
+python3 examples/python/stream.py https://neosatoshi.com/static/images/example_api_multi.jpg
+node examples/node/stream.mjs https://neosatoshi.com/static/images/example_api_lorcana.jpg lorcana
+```
+
+Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `done` (same body as the JSON response) or `error` (`status`, `error`, `message`). A `: keep-alive` comment comes every 15 seconds. Errors before the detection starts stay plain JSON with their status code. A stream cannot be resumed: a reconnect is a new, charged detection. Details: [documentation](https://neosatoshi.com/developers/detection-api#streaming).
+
 ## Supported games and languages
 
 | Game | `tcg` value | Card languages | Cards per photo |
@@ -43,7 +55,7 @@ All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
 | One Piece Card Game | `onepiece` | English, Japanese | One |
 | Disney Lorcana | `lorcana` | English, German, French, Italian | One |
 | Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | One |
-| Magic: The Gathering | `magic` | English, German | One |
+| Magic: The Gathering | `magic` | English, German, French, Italian, Spanish | One |
 
 ## Request
 
@@ -58,6 +70,7 @@ All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
 | `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB. |
 | `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
 | `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh` or `magic`. |
+| `stream` | no | `true` for Server-Sent Events, see [Streaming](#streaming). The header `Accept: text/event-stream` does the same. |
 
 ## Response
 
@@ -159,7 +172,7 @@ Errors return JSON with `error` (a code) and usually `message`.
 ## Limits and pricing
 
 * Images: JPEG or PNG, at most 12 MB. Pokémon: several cards per photo (best up to about 20). Other games: one card per photo.
-* Synchronous: one card usually takes 6 to 20 seconds. Use a client timeout of at least 120 seconds.
+* One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
 * The API identifies cards. It does not grade card condition.
@@ -190,6 +203,7 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 |---|---|
 | [examples/curl/detect.sh](examples/curl/detect.sh) | Bash and curl, summary via `jq` if installed |
 | [examples/python/detect.py](examples/python/detect.py) | Python with `requests` |
+| [examples/python/stream.py](examples/python/stream.py), [examples/node/stream.mjs](examples/node/stream.mjs), [examples/curl/stream.sh](examples/curl/stream.sh) | Streaming: each card as soon as it is recognised |
 | [examples/python/batch_to_csv.py](examples/python/batch_to_csv.py) | Process a folder, write a CSV (name, set, number, rarity, language, cardmarket_id, Cardmarket trend) |
 | [examples/node/detect.mjs](examples/node/detect.mjs) | Node.js 18+, built-in `fetch`, no dependencies |
 | [examples/images/](examples/images/) | Test photos (testing the API only) |
@@ -220,7 +234,10 @@ No. It identifies which card it is (set, number, rarity, language, variant field
 No, only the TCG in English, German, French, Italian, Spanish and Portuguese.
 
 **How long does a request take?**
-It is synchronous; one card usually takes 6 to 20 seconds. Use a 120 second client timeout. 502 and 504 can be retried.
+One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds. Use a 120 second client timeout. 502 and 504 can be retried.
+
+**Can I get the cards one by one?**
+Yes. With `"stream": true` each card arrives as a Server-Sent Event as soon as it is recognised. It helps with Pokémon binder pages; see [Streaming](#streaming).
 
 **What does it cost?**
 One credit per detected card, from the plan's monthly card scans. Images without a card are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.

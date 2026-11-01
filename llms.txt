@@ -10,7 +10,8 @@
 * Body (JSON): {"image": "<base64 JPEG or PNG, max 12 MB>", "tcg": "pokemon"}
 * Alternative body: {"image_url": "https://...", "tcg": "pokemon"} (public https URL to a JPEG or PNG, max 12 MB)
 * tcg values: pokemon (default), onepiece, lorcana, yugioh, magic
-* Synchronous. One card usually takes 6 to 20 seconds. Client timeout: at least 120 seconds.
+* Default: one JSON body. One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds. Client timeout: at least 120 seconds.
+* Optional streaming: add "stream": true (or the header Accept: text/event-stream) to get Server-Sent Events: accepted, progress, card (each card as soon as it is recognised), then done (the same body as the JSON response) or error. Same cost. A reconnect is a new, charged detection.
 
 ## Games and card languages
 
@@ -18,7 +19,7 @@
 * One Piece (onepiece): English, Japanese. One card per photo.
 * Disney Lorcana (lorcana): English, German, French, Italian. One card per photo.
 * Yu-Gi-Oh! TCG (yugioh): English, German, French, Italian, Spanish, Portuguese. Not OCG. One card per photo.
-* Magic: The Gathering (magic): English, German. One card per photo.
+* Magic: The Gathering (magic): English, German, French, Italian, Spanish. One card per photo.
 
 ## Response
 
