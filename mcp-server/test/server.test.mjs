@@ -192,4 +192,5 @@ test("list_supported_games names football and the card search prices", async () 
   const res = await client.callTool({ name: "list_supported_games", arguments: {} });
   assert.match(res.content[0].text, /tcg="football"/);
   assert.match(res.content[0].text, /Card search: .*0\.5 credits/);
+  assert.match(res.content[0].text, /tcg="lorcana".*cards per photo: several/);
 });

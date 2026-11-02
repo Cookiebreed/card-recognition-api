@@ -16,11 +16,12 @@
 ## Games and card languages
 
 * Pokémon (pokemon): English, German, French, Italian, Spanish, Japanese, Korean, Simplified Chinese. Several cards per photo, binder pages work, best up to about 20.
-* One Piece (onepiece): English, Japanese. One card per photo.
-* Disney Lorcana (lorcana): English, German, French, Italian. One card per photo.
-* Yu-Gi-Oh! TCG (yugioh): English, German, French, Italian, Spanish, Portuguese. Not OCG. One card per photo.
-* Magic: The Gathering (magic): English, German, French, Italian, Spanish. One card per photo.
-* Star Wars: Unlimited (star_wars_unlimited): English, German, French, Italian, Spanish. One card per photo.
+* One Piece (onepiece): English, Japanese. Several cards per photo, binder pages work.
+* Disney Lorcana (lorcana): English, German, French, Italian. Several cards per photo, binder pages work.
+* Yu-Gi-Oh! TCG (yugioh): English, German, French, Italian, Spanish, Portuguese. Not OCG. Several cards per photo, binder pages work.
+* Magic: The Gathering (magic): English, German, French, Italian, Spanish. Several cards per photo, binder pages work.
+* Star Wars: Unlimited (star_wars_unlimited): English, German, French, Italian, Spanish. Several cards per photo, binder pages work.
+* One game per photo: send the matching tcg.
 * Football (soccer) cards (football): Topps, Panini and other makers. One card front per photo, JPEG or PNG up to 4 MB, about 6 to 25 seconds. No card language.
 
 ## Response

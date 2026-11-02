@@ -12,7 +12,7 @@ export interface ServerOptions {
 
 const RECOGNIZE_DESCRIPTION = [
   "Identify trading cards in a photo with the NeoSatoshi card recognition API.",
-  "Games: Pokémon (default; several cards per photo, binder pages work), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering and Star Wars: Unlimited (one card per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
+  "Games: Pokémon (default), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering and Star Wars: Unlimited, several cards per photo (binder pages work, one game per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
   "Returns per card: name, language, set, number, rarity, Cardmarket product ID, daily Cardmarket prices in EUR (TCGplayer USD where available), confidence and alternatives.",
   "Football cards instead: the player, release (set, number), season, subset, teams, rookie flag, a sure flag, alternatives and the parallel (three candidates with print runs, a pick only when the recognizer is sure; a person should confirm it). No prices and no images for football yet; it takes about 6 to 25 seconds.",
   "Graded slabs (PSA, BGS, CGC, for football also SGC) fill graded with the grade read from the label. It does not grade card condition.",

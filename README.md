@@ -38,7 +38,7 @@ All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
 
 ## Streaming
 
-Add `"stream": true` to get Server-Sent Events: each card as soon as it is recognised, then the same result as a normal call, at the same cost. On a binder page with 9 cards the first card came after about 6 seconds and all nine after about 17. The games with one card per photo get progress events, not a faster result.
+Add `"stream": true` to get Server-Sent Events: each card as soon as it is recognised, then the same result as a normal call, at the same cost. On a Pokémon binder page with 9 cards the first card came after about 6 seconds and all nine after about 17. Football (one card per photo) gets progress events, not a faster result.
 
 ```bash
 ./examples/curl/stream.sh https://neosatoshi.com/static/images/example_api_multi.jpg
@@ -53,11 +53,11 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 | Game | `tcg` value | Card languages | Cards per photo |
 |---|---|---|---|
 | Pokémon TCG | `pokemon` (default) | English, German, French, Italian, Spanish, Japanese, Korean, Simplified Chinese | Several (binder pages work, best up to about 20) |
-| One Piece Card Game | `onepiece` | English, Japanese | One |
-| Disney Lorcana | `lorcana` | English, German, French, Italian | One |
-| Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | One |
-| Magic: The Gathering | `magic` | English, German, French, Italian, Spanish | One |
-| Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | One |
+| One Piece Card Game | `onepiece` | English, Japanese | Several (binder pages work) |
+| Disney Lorcana | `lorcana` | English, German, French, Italian | Several (binder pages work) |
+| Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | Several (binder pages work) |
+| Magic: The Gathering | `magic` | English, German, French, Italian, Spanish | Several (binder pages work) |
+| Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | Several (binder pages work) |
 | Football (soccer) cards: Topps, Panini and other makers | `football` | (no card language) | One, the card front, at most 4 MB |
 
 ## Request
@@ -179,7 +179,7 @@ Errors return JSON with `error` (a code) and usually `message`.
 
 ## Limits and pricing
 
-* Images: JPEG or PNG, at most 12 MB (football 4 MB). Pokémon: several cards per photo (best up to about 20). Other games: one card per photo.
+* Images: JPEG or PNG, at most 12 MB (football 4 MB). All six trading card games: several cards per photo (binder pages work; Pokémon best up to about 20), one game per photo. Football: one card per photo.
 * One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football card about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
@@ -245,7 +245,7 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
 
 **Can it recognise several cards in one photo?**
-For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh!, Magic, Star Wars: Unlimited and football cards, send one card per photo.
+Yes, in all six trading card games: binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football cards: one card per photo.
 
 **Does it return prices?**
 Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`. Football cards have no prices in the API yet.
@@ -266,7 +266,7 @@ No, only the TCG in English, German, French, Italian, Spanish and Portuguese.
 One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds. Use a 120 second client timeout. 502 and 504 can be retried.
 
 **Can I get the cards one by one?**
-Yes. With `"stream": true` each card arrives as a Server-Sent Event as soon as it is recognised. It helps with Pokémon binder pages; see [Streaming](#streaming).
+Yes. With `"stream": true` each card arrives as a Server-Sent Event as soon as it is recognised. It helps with binder pages; see [Streaming](#streaming).
 
 **What does it cost?**
 One credit per detected card, from the plan's monthly card scans. Images without a card are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.

@@ -1,7 +1,7 @@
 // Facts about the NeoSatoshi card recognition API that the server relies on.
 
 export const SERVER_NAME = "neosatoshi-card-recognition";
-export const SERVER_VERSION = "0.3.0";
+export const SERVER_VERSION = "0.3.1";
 
 /** The detection endpoint. */
 export const API_ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
@@ -32,16 +32,16 @@ export const SUPPORTED_GAMES = {
       cards_per_photo: "several (binder pages work, best up to about 20 cards)",
       default: true,
     },
-    { tcg: "onepiece", name: "One Piece Card Game", languages: ["en", "ja"], cards_per_photo: "one" },
-    { tcg: "lorcana", name: "Disney Lorcana", languages: ["en", "de", "fr", "it"], cards_per_photo: "one" },
+    { tcg: "onepiece", name: "One Piece Card Game", languages: ["en", "ja"], cards_per_photo: "several (binder pages work)" },
+    { tcg: "lorcana", name: "Disney Lorcana", languages: ["en", "de", "fr", "it"], cards_per_photo: "several (binder pages work)" },
     {
       tcg: "yugioh",
       name: "Yu-Gi-Oh! TCG (not OCG)",
       languages: ["en", "de", "fr", "it", "es", "pt"],
-      cards_per_photo: "one",
+      cards_per_photo: "several (binder pages work)",
     },
-    { tcg: "magic", name: "Magic: The Gathering", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "one" },
-    { tcg: "star_wars_unlimited", name: "Star Wars: Unlimited", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "one" },
+    { tcg: "magic", name: "Magic: The Gathering", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "several (binder pages work)" },
+    { tcg: "star_wars_unlimited", name: "Star Wars: Unlimited", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "several (binder pages work)" },
     {
       tcg: "football",
       name: "Football (soccer) cards: Topps, Panini and other makers",
@@ -52,7 +52,7 @@ export const SUPPORTED_GAMES = {
   limits: {
     image_formats: ["JPEG", "PNG"],
     max_image_size: "12 MB",
-    request: "one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds; client timeout 120 seconds",
+    request: "one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 Pokémon cards about 17 seconds, 8 Lorcana cards about 8 seconds; client timeout 120 seconds",
     demo_key: "10 detections per day per network, no signup",
     billing: "own keys: one credit per detected card; images without a card are not charged",
     football:
