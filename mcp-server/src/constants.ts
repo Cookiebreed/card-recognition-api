@@ -3,8 +3,11 @@
 export const SERVER_NAME = "neosatoshi-card-recognition";
 export const SERVER_VERSION = "0.1.0";
 
-/** The only network endpoint this server ever calls. */
+/** The detection endpoint. */
 export const API_ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
+
+/** The card search and correction API (search, corrections, lookup by id). Same key as detection. */
+export const CARDS_API_BASE = "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi";
 
 /**
  * Public demo key. It is intentionally public and printed in the official docs.

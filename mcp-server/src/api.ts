@@ -1,7 +1,7 @@
 // Client for the one endpoint this server calls. The API key is sent only in the
 // Authorization header and is scrubbed from every message that leaves this module.
 
-import { API_ENDPOINT, DEMO_API_KEY, REQUEST_TIMEOUT_MS, SERVER_VERSION, type Tcg } from "./constants.js";
+import { API_ENDPOINT, CARDS_API_BASE, DEMO_API_KEY, REQUEST_TIMEOUT_MS, SERVER_VERSION, type Tcg } from "./constants.js";
 
 export interface DetectBody {
   image?: string;
@@ -42,16 +42,37 @@ export async function detect(
   key: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Record<string, unknown>> {
+  return request(API_ENDPOINT, "POST", body, key, fetchImpl);
+}
+
+/** One call to the card search and correction API: POST /search, POST /corrections, GET /cards/{tcg}/{card_id}. */
+export async function cardsApi(
+  method: "GET" | "POST",
+  pathAndQuery: string,
+  body: Record<string, unknown> | undefined,
+  key: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, unknown>> {
+  return request(`${CARDS_API_BASE}${pathAndQuery}`, method, body, key, fetchImpl);
+}
+
+async function request(
+  url: string,
+  method: "GET" | "POST",
+  body: unknown,
+  key: string,
+  fetchImpl: typeof fetch,
+): Promise<Record<string, unknown>> {
   let res: Response;
   try {
-    res = await fetchImpl(API_ENDPOINT, {
-      method: "POST",
+    res = await fetchImpl(url, {
+      method,
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
         "User-Agent": `neosatoshi-card-mcp/${SERVER_VERSION}`,
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (err) {

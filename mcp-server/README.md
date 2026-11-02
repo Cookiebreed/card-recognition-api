@@ -27,6 +27,23 @@ Example summary line:
 
 The API identifies cards; it does not grade condition. One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds. The client waits up to 120 seconds.
 
+### `search_cards`
+
+Search the card catalog; results are full card objects like a detection returns (set, number, rarity, Cardmarket
+product ID, daily prices, images), at most 10, with `has_more` but no total. With `request_id` and `card_index` from
+`recognize_cards` it is a free correction search (5 per detected card within 24 hours, at most 5 results). Without
+them it is the paid card search: 0.5 credits when it returns a card.
+
+### `correct_card`
+
+Correct a detected card to the right catalog card (`card_id` from a correction search or from the card's
+alternatives). Free, within 24 hours, 3 times per card, only for the key that made the detection.
+
+### `get_card`
+
+One card by its `card_id`, for example to refresh a price. 0.5 credits when the card exists. For a wrong detection
+use `search_cards` with `request_id` and `correct_card` instead, both free.
+
 ### `list_supported_games`
 
 Games, card languages, `tcg` values and limits. No API call, no cost.
