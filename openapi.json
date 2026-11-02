@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.3.0",
+    "version": "1.7.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish) and Star Wars: Unlimited (English, German, French, Italian, Spanish). The other games need one card per photo.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games, 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -81,6 +81,13 @@
                     "tcg": "star_wars_unlimited"
                   }
                 },
+                "football": {
+                  "summary": "Football (soccer) cards",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "football"
+                  }
+                },
                 "image_url": {
                   "summary": "Image by URL (Lorcana)",
                   "value": {
@@ -131,6 +138,7 @@
                         "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
                       },
                       "confidence": 0.85,
+                      "graded": null,
                       "image_quality": {
                         "blurred": false,
                         "unusual_dimensions": false
@@ -161,7 +169,7 @@
             }
           },
           "400": {
-            "description": "missing_image, ambiguous_image (both image and image_url), bad_image, image_too_large (over 12 MB), unsupported_image (only JPEG and PNG), unsupported_tcg, bad_image_url (not a public https URL) or image_url_fetch_failed.",
+            "description": "missing_image, ambiguous_image (both image and image_url), bad_image, image_too_large (over 12 MB, football over 4 MB), unsupported_image (only JPEG and PNG), unsupported_tcg, bad_image_url (not a public https URL) or image_url_fetch_failed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -201,7 +209,7 @@
             }
           },
           "422": {
-            "description": "no_card_detected: no card was recognised. Nothing is charged.",
+            "description": "no_card_detected: no card was recognised. Nothing is charged. unreadable_image (football): the recognizer could not read the image.",
             "content": {
               "application/json": {
                 "schema": {
@@ -230,8 +238,490 @@
               }
             }
           },
+          "503": {
+            "description": "Football only. football_daily_limit: football recognition has used its daily capacity (it shares an eBay quota); resets_at and the Retry-After header say when it opens again, nothing was charged and the other games are not affected. football_unavailable: the recognizer is unavailable, retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "504": {
             "description": "detection_timeout, often a cold start. Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cardsApi/search": {
+      "post": {
+        "operationId": "searchCards",
+        "summary": "Search the card catalog (paid), or search for the right card of a detection (free)",
+        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All six games in their catalog languages. A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CardSearchRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CorrectionSearchRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cards.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or too broad query (query_too_broad, invalid_card_index, unsupported_language ...).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "out_of_credits: no credits left. No results, nothing charged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "feature_not_enabled (not part of this plan), request_not_yours, paid_search_not_enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown_request_id (unknown or older than 48 hours), card_not_found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_in_progress: a request with this Idempotency-Key is still running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "correction_window_closed (24 hours).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reuse: this Idempotency-Key was used for another request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. Retry-After is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "search_failed, lookup_failed. Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9:_-]{8,100}$"
+            },
+            "description": "Optional. A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409."
+          }
+        ]
+      }
+    },
+    "/cardsApi/corrections": {
+      "post": {
+        "operationId": "correctCard",
+        "summary": "Correct a detected card (free)",
+        "description": "Card card_index of the detection becomes the catalog card card_id. Free, 3 corrections per detected card within 24 hours, same API key account (demo key: same network). Returns the full card in the detection shape. Corrections are used to improve the recognition.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The corrected card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or too broad query (query_too_broad, invalid_card_index, unsupported_language ...).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "request_not_yours, feature_not_enabled, paid_search_not_enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "unknown_request_id (unknown or older than 48 hours), card_not_found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "correction_window_closed (24 hours).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. Retry-After is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "search_failed, lookup_failed. Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "cards_api_disabled, limiter_unavailable. Retry later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cardsApi/cards/{tcg}/{card_id}": {
+      "get": {
+        "operationId": "getCard",
+        "summary": "One card by id (paid)",
+        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key.",
+        "parameters": [
+          {
+            "name": "tcg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pokemon",
+                "onepiece",
+                "lorcana",
+                "yugioh",
+                "magic",
+                "star_wars_unlimited"
+              ],
+              "description": "Default: the detected card's game."
+            }
+          },
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "de",
+                "fr",
+                "es",
+                "it",
+                "pt",
+                "ja",
+                "ko",
+                "zh"
+              ]
+            },
+            "description": "Default: en. Same languages per game as the search."
+          },
+          {
+            "name": "cardmarket_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Picks a printing or parallel (One Piece)."
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Picks a printing (Yu-Gi-Oh! printed code, Magic and SWU set code)."
+          },
+          {
+            "name": "number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "With set: picks a printing (Magic, SWU)."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9:_-]{8,100}$"
+            },
+            "description": "Optional. A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The card.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardLookupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "out_of_credits: no credits left. No results, nothing charged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "feature_not_enabled (not part of this plan), paid_search_not_enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "card_not_found. Nothing was charged.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "idempotency_in_progress: a request with this Idempotency-Key is still running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_key_reuse: this Idempotency-Key was used for another request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, daily_cap_reached. Retry-After is set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "lookup_failed. Retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). Retry later.",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,7 +750,7 @@
           "image": {
             "type": "string",
             "contentEncoding": "base64",
-            "description": "Base64-encoded JPEG or PNG, at most 12 MB. Pokémon: one or more cards (binder pages work, best up to about 20 cards). Other games: one card per image."
+            "description": "Base64-encoded JPEG or PNG, at most 12 MB (football: at most 4 MB). Pokémon: one or more cards (binder pages work, best up to about 20 cards). Other games: one card per image (football: the card front)."
           },
           "image_url": {
             "type": "string",
@@ -275,7 +765,8 @@
               "lorcana",
               "yugioh",
               "magic",
-              "star_wars_unlimited"
+              "star_wars_unlimited",
+              "football"
             ],
             "default": "pokemon",
             "description": "Which game the image shows."
@@ -343,7 +834,7 @@
           },
           "warnings": {
             "type": "array",
-            "description": "Only when the image was processed in part. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest.",
+            "description": "Only when the image was processed in part. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest. code partial_recognition (football): part of the recognizer was unavailable, so the result may be less exact.",
             "items": {
               "type": "object",
               "properties": {
@@ -351,7 +842,8 @@
                   "type": "string",
                   "enum": [
                     "credits_ran_out",
-                    "incomplete"
+                    "incomplete",
+                    "partial_recognition"
                   ]
                 },
                 "message": {
@@ -359,12 +851,29 @@
                 }
               }
             }
+          },
+          "correction": {
+            "type": "object",
+            "description": "Only when this detection can be corrected for free: send request_id and cards[].card_index to the card search and the corrections endpoint until `until`.",
+            "properties": {
+              "request_id": {
+                "type": "string"
+              },
+              "until": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endpoint": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
           }
         }
       },
       "Card": {
         "type": "object",
-        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed. See the documentation for every field.",
+        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; football season, subset, teams, rookie, card_type, sure, score, parallel (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -381,7 +890,8 @@
               "lorcana",
               "yugioh",
               "magic",
-              "star_wars_unlimited"
+              "star_wars_unlimited",
+              "football"
             ],
             "description": "Present for every game except Pokémon."
           },
@@ -435,20 +945,30 @@
             "description": "Cardmarket product ID."
           },
           "prices": {
-            "type": "object",
-            "description": "cardmarket in EUR (trend, low, avg7, avg30), tcgplayer in USD where available. A missing price is null, never 0.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "cardmarket in EUR (trend, low, avg7, avg30), tcgplayer in USD where available. A missing price is null, never 0. null for football: football prices are not in the API yet.",
             "additionalProperties": true
           },
           "images": {
             "type": "object",
             "properties": {
               "small": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "large": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
-            }
+            },
+            "description": "Reference image on our CDN. Both null for football: we hold no football card images."
           },
           "confidence": {
             "type": "number",
@@ -470,9 +990,140 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": true
+              "additionalProperties": true,
+              "properties": {
+                "card_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The alternative's card id (Pokémon, Lorcana, Magic, Star Wars: Unlimited). Send it to /cardsApi/corrections to pick this alternative."
+                },
+                "cardmarket_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "The alternative's Cardmarket product id."
+                }
+              }
             },
             "description": "Other likely matches for a manual pick."
+          },
+          "season": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Football only: the season of the release, for example 2023-24."
+          },
+          "subset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Football only: the subset within the release, for example Base or an insert set."
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Football only: the team or teams on the card."
+          },
+          "rookie": {
+            "type": "boolean",
+            "description": "Football only: the checklist marks the player as a rookie (RC) on this card."
+          },
+          "card_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Football only: the kind of card as the checklist lists it."
+          },
+          "sure": {
+            "type": "boolean",
+            "description": "Football only: the recognizer is sure of this card. false: show the alternatives to a person."
+          },
+          "score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Football only: the recognizer's ranking score. Higher is better; compare it only within one response."
+          },
+          "parallel": {
+            "type": "object",
+            "description": "Football only: the colour or foil version of the card. pick is set only when the recognizer is sure enough to suggest it (sure true); a person should still confirm it. candidates are its three best guesses in any case.",
+            "properties": {
+              "pick": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The parallel as the checklist names it, for example Gold Refractor, or Base."
+                      },
+                      "print_run": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "description": "The print run of a numbered parallel (50 for /50), else null."
+                      }
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "sure": {
+                "type": "boolean"
+              },
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "The parallel as the checklist names it, for example Gold Refractor, or Base."
+                    },
+                    "print_run": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "description": "The print run of a numbered parallel (50 for /50), else null."
+                    }
+                  }
+                }
+              },
+              "serial_number": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The copy's own number (12 of 12/50) where it was read on the card and fits the picked print run. A reading: check it on the card."
+              }
+            }
+          },
+          "graded": {
+            "$ref": "#/components/schemas/Graded"
+          },
+          "card_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Our card id (Pokémon e.g. \"base1-4\"; the other games' own ids). Stable; use it to correct, look up or store the card."
+          },
+          "card_index": {
+            "type": "integer",
+            "description": "Position of the card in this detection (0, 1, 2 ...). A correction names the card by request_id and card_index."
           }
         }
       },
@@ -577,6 +1228,477 @@
             }
           }
         ]
+      },
+      "Graded": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "description": "The slab on the photo, null for a raw card. PSA, BGS and CGC labels in every game, for football cards also SGC. The grade as read from the label, never an estimate; prices stay those of the raw card. A slab of another company comes back as a raw card or with grader null, never with a grade.",
+        "properties": {
+          "grader": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "PSA",
+              "BGS",
+              "CGC",
+              "SGC",
+              null
+            ],
+            "description": "null when the slab was recognised but the company was not. SGC only on football cards; on the other games an SGC slab comes back with grader null."
+          },
+          "grade": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "On the company's scale: \"10\", \"9.5\", \"10 Black Label\", \"10 Pristine\", \"Authentic\". null when it could not be read; the card is still a slab."
+          },
+          "cert_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "As read from the label. Not verified with the grading company."
+          },
+          "card_check": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "agree",
+              "disagree",
+              "unknown",
+              null
+            ],
+            "description": "The label compared with the card fields. On disagree, show the slab to a person. In Magic and Star Wars: Unlimited a card that could not be read can come from the label, so agree is not always a second opinion there."
+          },
+          "label": {
+            "type": "object",
+            "description": "As read from the label, each null when absent. The name can be shorter than the card's and is usually English. Football: name is the player and set the product as printed, and parallel is added.",
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "set": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "year": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parallel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Football cards only: the parallel as the label prints it (\"Gold Refractor /50\")."
+              }
+            }
+          },
+          "auto_grade": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Football cards only: the autograph's own grade on a dual-graded slab (\"10\"), as printed; null when the label has none."
+          }
+        },
+        "example": {
+          "grader": "PSA",
+          "grade": "10",
+          "cert_number": "12345678",
+          "card_check": "agree",
+          "label": {
+            "name": "Charizard",
+            "number": "199",
+            "code": null,
+            "set": "MEW",
+            "year": "2023"
+          }
+        }
+      },
+      "CorrectionSearchRequest": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "card_index"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "description": "request_id of the detection."
+          },
+          "card_index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "cards[].card_index of the card to correct."
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Card name, optionally with the number (\"charizard 4/102\"). At least 3 letters (2 CJK characters). Send q, or set and number."
+          },
+          "set": {
+            "type": "string",
+            "description": "Set id, e.g. \"base1\". Only together with number."
+          },
+          "number": {
+            "type": "string",
+            "description": "Card number, e.g. \"4\" or \"4/102\". Only together with set or q."
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "ja",
+              "ko",
+              "zh"
+            ],
+            "description": "Default: the detected card's language. Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es."
+          },
+          "tcg": {
+            "type": "string",
+            "enum": [
+              "pokemon",
+              "onepiece",
+              "lorcana",
+              "yugioh",
+              "magic",
+              "star_wars_unlimited"
+            ],
+            "description": "Default: the detected card's game."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "default": 5
+          }
+        }
+      },
+      "CorrectionSearchResponse": {
+        "type": "object",
+        "required": [
+          "results",
+          "count",
+          "has_more"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Card"
+            },
+            "description": "Full card objects in the detection shape; confidence, image_quality and graded are null."
+          },
+          "count": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More cards matched than were returned. There is no total."
+          },
+          "billing": {
+            "type": "object",
+            "properties": {
+              "charged_credits": {
+                "type": "number"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "free_correction"
+                ]
+              }
+            }
+          },
+          "correction": {
+            "type": "object",
+            "properties": {
+              "request_id": {
+                "type": "string"
+              },
+              "card_index": {
+                "type": "integer"
+              },
+              "searches_left": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "CorrectionRequest": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "card_index",
+          "card_id"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "card_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "card_id": {
+            "type": "string",
+            "description": "card_id of a search result or an alternative. Yu-Gi-Oh!: the passcode; Magic: the oracle_id when the printing is open; SWU: a printing id or the card_key."
+          },
+          "language": {
+            "type": "string",
+            "description": "Card language. Default: the detected card's language."
+          },
+          "cardmarket_id": {
+            "type": "integer",
+            "description": "Optional: picks one printing where a card_id has several."
+          },
+          "set": {
+            "type": "string",
+            "description": "Magic, SWU: set code of the printing; Yu-Gi-Oh!: the printed code (LOB-EN001)."
+          },
+          "number": {
+            "type": "string",
+            "description": "Magic, SWU: collector number of the printing."
+          }
+        }
+      },
+      "CorrectionResponse": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "card_index",
+          "card"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "card_index": {
+            "type": "integer"
+          },
+          "card": {
+            "$ref": "#/components/schemas/Card"
+          },
+          "applies_left": {
+            "type": "integer"
+          },
+          "correction": {
+            "type": "object",
+            "properties": {
+              "until": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "CardSearchRequest": {
+        "type": "object",
+        "required": [
+          "tcg"
+        ],
+        "properties": {
+          "tcg": {
+            "type": "string",
+            "enum": [
+              "pokemon",
+              "onepiece",
+              "lorcana",
+              "yugioh",
+              "magic",
+              "star_wars_unlimited"
+            ],
+            "description": "The game to search."
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Card name, optionally with the number (\"charizard 4/102\"). At least 3 letters (2 CJK characters). Send q, or set and number."
+          },
+          "set": {
+            "type": "string",
+            "description": "Set id, e.g. \"base1\". Only together with number."
+          },
+          "number": {
+            "type": "string",
+            "description": "Card number, e.g. \"4\" or \"4/102\". Only together with set or q."
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "ja",
+              "ko",
+              "zh"
+            ],
+            "description": "Default: en (Pokémon, One Piece, Lorcana, Yu-Gi-Oh!, Magic, SWU). Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 10,
+            "description": "At most 10 (5 for the demo key)."
+          }
+        }
+      },
+      "CardSearchResponse": {
+        "type": "object",
+        "required": [
+          "results",
+          "count",
+          "has_more",
+          "billing"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Card"
+            },
+            "description": "Full card objects in the detection shape; confidence, image_quality and graded are null."
+          },
+          "count": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "More cards matched than were returned. There is no total."
+          },
+          "billing": {
+            "type": "object",
+            "properties": {
+              "charged_credits": {
+                "type": "number",
+                "description": "0.5 for a paid call that returned a card, 0 otherwise."
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "debited",
+                  "prepaid",
+                  "replayed",
+                  "none",
+                  "demo",
+                  "free_correction"
+                ],
+                "description": "debited: 1 credit was taken and pays this call and the next one; prepaid: paid by the previous debit; replayed: a repeat of an already charged call; none: no card, nothing charged; demo: the demo key, never charged."
+              },
+              "prepaid_half": {
+                "type": "boolean",
+                "description": "true when this call took 1 credit and your next paid call is already paid."
+              }
+            }
+          },
+          "credits": {
+            "type": "object",
+            "properties": {
+              "remaining": {
+                "type": "integer",
+                "description": "Estimated credits left after this call (only when this call took a credit)."
+              }
+            }
+          },
+          "correction": {
+            "type": "object",
+            "properties": {
+              "request_id": {
+                "type": "string"
+              },
+              "card_index": {
+                "type": "integer"
+              },
+              "searches_left": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "CardLookupResponse": {
+        "type": "object",
+        "required": [
+          "card",
+          "billing"
+        ],
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/Card"
+          },
+          "billing": {
+            "type": "object",
+            "properties": {
+              "charged_credits": {
+                "type": "number",
+                "description": "0.5 for a paid call that returned a card, 0 otherwise."
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "debited",
+                  "prepaid",
+                  "replayed",
+                  "none",
+                  "demo",
+                  "free_correction"
+                ],
+                "description": "debited: 1 credit was taken and pays this call and the next one; prepaid: paid by the previous debit; replayed: a repeat of an already charged call; none: no card, nothing charged; demo: the demo key, never charged."
+              },
+              "prepaid_half": {
+                "type": "boolean",
+                "description": "true when this call took 1 credit and your next paid call is already paid."
+              }
+            }
+          },
+          "credits": {
+            "type": "object",
+            "properties": {
+              "remaining": {
+                "type": "integer",
+                "description": "Estimated credits left after this call (only when this call took a credit)."
+              }
+            }
+          }
+        }
       }
     }
   }

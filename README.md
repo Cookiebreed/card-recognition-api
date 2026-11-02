@@ -8,6 +8,7 @@ This repository contains runnable examples (curl, Python, Node.js), an MCP serve
 * Auth: `Authorization: Bearer <API_KEY>`
 * Public demo key (no signup, 10 detections per day per network): `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274`
 * Docs: https://neosatoshi.com/developers/detection-api
+* Card search and corrections: `POST .../cardsApi/search`, `POST .../cardsApi/corrections`, `GET .../cardsApi/cards/{tcg}/{card_id}` (see [Card search and corrections](#card-search-and-corrections))
 * OpenAPI: [openapi.json](openapi.json) (also at https://neosatoshi.com/openapi.json)
 
 ## Quickstart (30 seconds)
@@ -178,6 +179,22 @@ Errors return JSON with `error` (a code) and usually `message`.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
 * The API identifies cards. It does not grade card condition.
 
+## Card search and corrections
+
+Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All six games.
+
+* **Correct a detection (free):** every detected card has `card_index`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `request_id`, `card_index` and `q` (a card name, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card.
+* **Card search (paid):** `POST /search` with `tcg` and `q` (or `set` + `number`), optional `language` and `limit` (up to 10). `GET /cards/{tcg}/{card_id}` returns one card, for example to refresh a price. 0.5 credits per call that returns a card, from the same balance as detection; no result is free. An `Idempotency-Key` header makes a repeat free. Daily limit per plan; the demo key allows 10 searches and 3 lookups per day per network.
+
+```bash
+curl -X POST https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search \
+  -H "Authorization: Bearer nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274" \
+  -H "Content-Type: application/json" \
+  -d '{"tcg": "pokemon", "q": "charizard 4/102", "limit": 3}'
+```
+
+Details: https://neosatoshi.com/developers/detection-api#card-search
+
 ## When to use this instead of a general vision LLM
 
 A general vision model can often read a card name from a photo. Use this API when you need:
@@ -190,7 +207,7 @@ If you only need a rough description of a photo, a general vision LLM may be eno
 
 ## MCP server (Claude, Cursor, Codex and other AI assistants)
 
-[mcp-server/](mcp-server/) is a stdio MCP server with two tools: `recognize_cards` (local file, https URL or base64) and `list_supported_games`. Quick setup for Claude Code:
+[mcp-server/](mcp-server/) is a stdio MCP server with five tools: `recognize_cards` (local file, https URL or base64), `search_cards`, `correct_card`, `get_card` and `list_supported_games`. Quick setup for Claude Code:
 
 ```bash
 claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp

@@ -15,7 +15,7 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 | `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB. `~` is expanded. |
 | `image_url` | string | Public `https://` URL of a JPEG or PNG. Forwarded to the API as is; the server never downloads it. |
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
-| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic` |
+| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited` |
 
 Give exactly one of `image_path`, `image_url`, `image_base64`. The result has a short text summary per card, the full API response as JSON text, and the same response as `structuredContent`. API errors come back as tool errors with the API's `error` code and `message`.
 

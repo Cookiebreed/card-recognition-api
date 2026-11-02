@@ -36,6 +36,12 @@ A missing price is null, never 0.
 
 JSON {error, message}. 400 missing_image, bad_image, image_too_large, unsupported_image, unsupported_tcg, bad_image_url, image_url_fetch_failed. 401 missing_api_key, invalid_api_key. 402 out_of_credits. 405 method_not_allowed. 422 no_card_detected (not charged). 429 rate_limited, demo_limit_reached. 502 backend step failed (retry). 504 detection_timeout (retry).
 
+## Card search and corrections
+
+* Base: https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi, same Bearer key, all six games.
+* Correct a wrong card (free, 24 hours): every card has "card_index", the response has "correction" with "request_id". POST /search with {"request_id", "card_index", "q": "<card name>"} (or "set" + "number") returns up to 5 full card objects, then POST /corrections with {"request_id", "card_index", "card_id"} returns the corrected card. 5 searches and 3 corrections per card.
+* Card search (paid): POST /search with {"tcg": "pokemon", "q": "charizard 4/102"} (or "set" + "number", optional "language", "limit" up to 10); GET /cards/{tcg}/{card_id} returns one card. 0.5 credits per call that returns a card, no result is free, Idempotency-Key header makes a repeat free. Demo key: 10 searches and 3 lookups per day per network.
+
 ## Pricing
 
 Own API keys: dashboard settings at https://neosatoshi.com/dashboard/settings/settings#api-keys, any paid plan (smallest: Start-Up, 19 per month, 1,000 card scans included). One credit per detected card. Images without a card are not charged.
