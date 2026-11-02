@@ -27,7 +27,7 @@ export function sniffImageType(buf: Uint8Array): ImageKind | null {
   return null;
 }
 
-function expandHome(p: string): string {
+export function expandHome(p: string): string {
   if (p === "~") return os.homedir();
   if (p.startsWith("~/") || p.startsWith("~\\")) return path.join(os.homedir(), p.slice(2));
   return p;
@@ -48,7 +48,7 @@ export function parseAllowedDirs(raw: string | undefined): string[] | null {
 }
 
 /** Resolves allowlist entries to real paths. Entries that do not exist are dropped. */
-async function realAllowedDirs(dirs: string[]): Promise<string[]> {
+export async function realAllowedDirs(dirs: string[]): Promise<string[]> {
   const out: string[] = [];
   for (const d of dirs) {
     try {

@@ -37,7 +37,7 @@ async function connect(env, fetchImpl) {
 test("lists all tools", async () => {
   const client = await connect({}, fakeFetch(200, sample, []));
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["correct_card", "get_card", "list_supported_games", "recognize_cards", "search_cards"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["correct_card", "get_card", "list_supported_games", "recognize_cards", "recognize_folder", "search_cards"]);
   assert.match(tools.find((t) => t.name === "search_cards").description, /free/);
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
@@ -193,4 +193,99 @@ test("list_supported_games names football and the card search prices", async () 
   assert.match(res.content[0].text, /tcg="football"/);
   assert.match(res.content[0].text, /Card search: .*0\.5 credits/);
   assert.match(res.content[0].text, /tcg="lorcana".*cards per photo: several/);
+});
+
+function sseFetch(events, calls) {
+  return async (url, init) => {
+    calls.push({ url, init });
+    const body = events.map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join(": keep-alive\n\n");
+    return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+  };
+}
+
+test("recognize_cards with a progress token streams and reports each card", async () => {
+  const calls = [];
+  const events = [["accepted", { request_id: "req_1" }], ["progress", { stage: "matching" }], ["card", { index: 0, card: { name: "Cinderace ex" } }], ["done", sample]];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, sseFetch(events, calls));
+  const seen = [];
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img } }, undefined, { onprogress: (p) => seen.push(p) });
+  assert.equal(res.isError, undefined);
+  assert.equal(JSON.parse(calls[0].init.body).stream, true);
+  assert.deepEqual(seen.map((p) => p.message), ["Photo accepted", "Stage: matching", "Card 1: Cinderace ex"]);
+  assert.match(res.content[0].text, /Cinderace ex/);
+});
+
+test("a stream error is a tool error; a stream without a final event is never resent", async () => {
+  const c1 = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, sseFetch([["accepted", {}], ["error", { status: 502, error: "detection_failed", message: "x" }]], []));
+  const r1 = await c1.callTool({ name: "recognize_cards", arguments: { image_path: img } }, undefined, { onprogress: () => {} });
+  assert.equal(r1.isError, true);
+  assert.match(r1.content[0].text, /502 detection_failed/);
+  const calls = [];
+  const c2 = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, sseFetch([["accepted", {}]], calls));
+  const r2 = await c2.callTool({ name: "recognize_cards", arguments: { image_path: img } }, undefined, { onprogress: () => {} });
+  assert.equal(r2.isError, true);
+  assert.match(r2.content[0].text, /ended without a result/);
+  assert.equal(calls.length, 1);
+});
+
+test("include_images adds catalog images from our CDN only", async () => {
+  const fetched = [];
+  const resp = { request_id: "r", count: 2, cards: [
+    { name: "A", images: { small: "https://d1m1gwcombja0u.cloudfront.net/x/a_small.webp" } },
+    { name: "B", images: { small: "https://evil.example.com/b.webp" } },
+  ] };
+  const server = createServer({ env: { NEOSATOSHI_API_KEY: "k_123456789" }, fetchImpl: fakeFetch(200, resp, []), imageFetchImpl: async (url) => {
+    fetched.push(url);
+    return new Response(Buffer.from([1, 2, 3]), { status: 200, headers: { "content-type": "image/webp" } });
+  } });
+  const client = new Client({ name: "t", version: "0" });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(a), client.connect(b)]);
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, include_images: true } });
+  assert.deepEqual(fetched, ["https://d1m1gwcombja0u.cloudfront.net/x/a_small.webp"]);
+  const images = res.content.filter((c) => c.type === "image");
+  assert.equal(images.length, 1);
+  assert.equal(images[0].mimeType, "image/webp");
+  assert.match(res.content.find((c) => /Catalog images/.test(c.text ?? "")).text, /1\. A/);
+  const plain = await client.callTool({ name: "recognize_cards", arguments: { image_path: img } });
+  assert.equal(plain.content.filter((c) => c.type === "image").length, 0, "off by default");
+});
+
+test("recognize_folder: every photo once, a new CSV with escaped cells, never overwrites", async () => {
+  const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-folder-")));
+  for (const n of ["b.jpg", "a.png", "notes.txt", ".hidden.jpg"]) fs.writeFileSync(path.join(folder, n), n === "a.png" ? Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) : JPEG);
+  const calls = [];
+  const resp = { request_id: "req_f", count: 1, cards: [{ name: "=HYPERLINK(1)", set: { name: "Base", number: "4" }, cardmarket_id: 1, prices: { cardmarket: { trend: 2.5 } }, card_index: 0 }] };
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, resp, calls));
+  const seen = [];
+  const res = await client.callTool({ name: "recognize_folder", arguments: { folder, output: "both" } }, undefined, { onprogress: (p) => seen.push(p) });
+  assert.equal(res.isError, undefined, res.content[0].text);
+  assert.equal(calls.length, 2, "two photos, the txt and the hidden file are skipped");
+  assert.deepEqual(seen.map((p) => [p.progress, p.total, p.message]), [[1, 2, "a.png"], [2, 2, "b.jpg"]]);
+  const [csvFile, jsonFile] = res.structuredContent.files_written;
+  const csv = fs.readFileSync(csvFile, "utf8").split("\r\n");
+  assert.match(csv[0], /^file,card_index,name,/);
+  assert.match(csv[1], /^a\.png,0,'=HYPERLINK\(1\),pokemon,,Base,,4,,1,2\.5,/);
+  assert.equal(JSON.parse(fs.readFileSync(jsonFile, "utf8")).length, 2);
+  const again = await client.callTool({ name: "recognize_folder", arguments: { folder } });
+  assert.notEqual(again.structuredContent.files_written[0], csvFile);
+  fs.rmSync(folder, { recursive: true, force: true });
+});
+
+test("recognize_folder stops on out_of_credits and respects the allowlist", async () => {
+  const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-folder2-")));
+  for (const n of ["1.jpg", "2.jpg", "3.jpg"]) fs.writeFileSync(path.join(folder, n), JPEG);
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(402, { error: "out_of_credits", message: "No credits" }, calls));
+  const res = await client.callTool({ name: "recognize_folder", arguments: { folder } });
+  assert.equal(calls.length, 1);
+  assert.equal(res.structuredContent.stopped, "out_of_credits");
+  assert.deepEqual(res.structuredContent.files_written, []);
+  const other = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-allow2-")));
+  const c2 = await connect({ NEOSATOSHI_ALLOWED_DIRS: other }, fakeFetch(200, sample, []));
+  const r2 = await c2.callTool({ name: "recognize_folder", arguments: { folder } });
+  assert.equal(r2.isError, true);
+  assert.match(r2.content[0].text, /NEOSATOSHI_ALLOWED_DIRS/);
+  fs.rmSync(folder, { recursive: true, force: true });
+  fs.rmSync(other, { recursive: true, force: true });
 });

@@ -1,13 +1,18 @@
+import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ApiError, cardsApi, detect, resolveApiKey, scrub, type DetectBody } from "./api.js";
+import { ApiError, cardsApi, detect, detectStream, resolveApiKey, scrub, type DetectBody } from "./api.js";
+import { cardImages, MAX_IMAGES } from "./cardImages.js";
 import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
 import { InputError, normalizeBase64Image, parseAllowedDirs, readImageFile, validateImageUrl } from "./images.js";
 import { summarize } from "./summary.js";
+import { csvRows, listImages, stamp, toCsv, writeNew } from "./folder.js";
 
 export interface ServerOptions {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
+  /** Fetch for the card images (tests); defaults to fetchImpl, then the global fetch. */
+  imageFetchImpl?: typeof fetch;
 }
 
 const RECOGNIZE_DESCRIPTION = [
@@ -18,7 +23,8 @@ const RECOGNIZE_DESCRIPTION = [
   "Graded slabs (PSA, BGS, CGC, for football also SGC) fill graded with the grade read from the label. It does not grade card condition.",
   "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB, football 4 MB), image_url (public https URL, forwarded to the API) or image_base64.",
   "Uses the API key in NEOSATOSHI_API_KEY; without it, the public demo key is used (10 detections per day per network).",
-  "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period.",
+  "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; with a progress token the cards are reported one by one while a binder page is read.",
+  `include_images: true adds the catalog image of up to ${MAX_IMAGES} recognised cards, to compare them with the photo.`,
 ].join(" ");
 
 const SEARCH_DESCRIPTION = [
@@ -75,6 +81,10 @@ export function createServer(opts: ServerOptions = {}): McpServer {
           .enum(TCG_VALUES)
           .optional()
           .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards."),
+        include_images: z
+          .boolean()
+          .optional()
+          .describe(`Also return the catalog image of up to ${MAX_IMAGES} recognised cards (small images from our CDN). Default false. Football cards have none.`),
       },
       annotations: {
         title: "Recognize trading cards",
@@ -84,7 +94,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         openWorldHint: true,
       },
     },
-    async (args) => {
+    async (args, extra) => {
       const sources = (["image_path", "image_url", "image_base64"] as const).filter(
         (k) => typeof args[k] === "string" && args[k]!.trim() !== "",
       );
@@ -109,15 +119,123 @@ export function createServer(opts: ServerOptions = {}): McpServer {
           body.image_url = validateImageUrl(args.image_url!);
         }
 
-        const resp = await detect(body, key, opts.fetchImpl);
+        // With a progress token the client shows progress: stream the detection and report each stage and card.
+        const progressToken = extra?._meta?.progressToken;
+        let resp: Record<string, unknown>;
+        if (progressToken !== undefined) {
+          let step = 0;
+          let cards = 0;
+          resp = await detectStream(body, key, async ({ event, data }) => {
+            const message =
+              event === "card"
+                ? `Card ${++cards}: ${data.card?.full_name ?? data.card?.name ?? "recognised"}`
+                : event === "progress"
+                  ? `Stage: ${data.stage ?? "working"}`
+                  : event === "accepted"
+                    ? "Photo accepted"
+                    : null;
+            if (!message) return;
+            try {
+              await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress: ++step, message } });
+            } catch {
+              // progress is best effort; the result still comes back
+            }
+          }, opts.fetchImpl);
+        } else {
+          resp = await detect(body, key, opts.fetchImpl);
+        }
         let text = summarize(resp);
         if (isDemo) text += "\n(Using the public demo key. Set NEOSATOSHI_API_KEY for your own quota.)";
+        const content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }> = [
+          { type: "text" as const, text },
+          { type: "text" as const, text: JSON.stringify(resp) },
+        ];
+        if (args.include_images && Array.isArray(resp.cards)) {
+          const { images, labels } = await cardImages(resp.cards as Record<string, any>[], opts.imageFetchImpl ?? opts.fetchImpl);
+          if (images.length) content.push({ type: "text" as const, text: `Catalog images, in this order: ${labels.join("; ")}` }, ...images);
+        }
+        return { content, structuredContent: resp };
+      } catch (err) {
+        if (err instanceof InputError || err instanceof ApiError) return errorResult(scrub(err.message, key));
+        return errorResult(scrub(`Unexpected error: ${(err as Error)?.message ?? String(err)}`, key));
+      }
+    },
+  );
+
+  server.registerTool(
+    "recognize_folder",
+    {
+      title: "Recognize every card photo in a folder",
+      description: [
+        "Recognize all JPEG and PNG photos in one local folder (not its subfolders), one detection per photo, in name order, and write the cards to a new CSV file (and/or a JSON file in the API format) in that folder.",
+        "CSV columns: file, card_index, name, tcg, language, set_name, set_code, number, rarity, cardmarket_id, Cardmarket trend and 30 day average in EUR, TCGplayer market in USD, confidence, graded, season, subset, parallel, request_id.",
+        "Costs like recognize_cards: one credit per detected card. The demo key allows only 10 detections per day, so use your own key for folders. Stops at max_files (default 20, at most 100) and on errors that would fail every photo (no credits, invalid key, demo limit).",
+        "Existing files are never overwritten. With a progress token each photo is reported as it is done.",
+      ].join(" "),
+      inputSchema: {
+        folder: z.string().describe("Path to the folder with the photos. ~ is expanded."),
+        tcg: z.enum(TCG_VALUES).optional().describe("Which game the photos show, one game per folder. Default: pokemon."),
+        max_files: z.number().int().min(1).max(100).optional().describe("At most this many photos, in name order. Default 20."),
+        output: z.enum(["csv", "json", "both"]).optional().describe("Result file(s) to write into the folder. Default csv."),
+      },
+      annotations: { title: "Recognize a folder", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    },
+    async (args, extra) => {
+      const { key, isDemo } = resolveApiKey(env);
+      const tcg = args.tcg ?? "pokemon";
+      const maxBytes = tcg === "football" ? FOOTBALL_MAX_IMAGE_BYTES : MAX_IMAGE_BYTES;
+      try {
+        const { dir, files: all } = await listImages(args.folder, allowedDirs);
+        const files = all.slice(0, args.max_files ?? 20);
+        if (!files.length) return errorResult(`No .jpg, .jpeg or .png files in ${dir}.`);
+        const progressToken = extra?._meta?.progressToken;
+        const results: { file: string; resp: Record<string, any> }[] = [];
+        const problems: string[] = [];
+        let stopped: string | null = null;
+        for (const [i, file] of files.entries()) {
+          try {
+            const bytes = await readImageFile(file, { allowedDirs, maxBytes });
+            const resp = await detect({ tcg, image: bytes.toString("base64") }, key, opts.fetchImpl);
+            results.push({ file, resp });
+          } catch (err) {
+            const code = err instanceof ApiError ? err.code : null;
+            const msg = err instanceof InputError || err instanceof ApiError ? err.message : String((err as Error)?.message ?? err);
+            problems.push(`${path.basename(file)}: ${scrub(msg, key)}`);
+            if (code && ["out_of_credits", "invalid_api_key", "missing_api_key", "demo_limit_reached", "feature_not_enabled"].includes(code)) {
+              stopped = code;
+              break;
+            }
+          }
+          if (progressToken !== undefined) {
+            try {
+              await extra.sendNotification({ method: "notifications/progress", params: { progressToken, progress: i + 1, total: files.length, message: path.basename(file) } });
+            } catch {
+              // best effort
+            }
+          }
+        }
+        const rows = results.flatMap((r) => csvRows(r.file, r.resp));
+        const out = args.output ?? "csv";
+        const base = `neosatoshi_cards_${stamp()}`;
+        const written: string[] = [];
+        if (results.length && (out === "csv" || out === "both")) written.push(await writeNew(dir, base, ".csv", toCsv(rows)));
+        if (results.length && (out === "json" || out === "both")) {
+          const json = results.map((r) => ({ file: path.basename(r.file), ...r.resp }));
+          written.push(await writeNew(dir, base, ".json", JSON.stringify(json, null, 2) + "\n"));
+        }
+        const last = results.at(-1)?.resp;
+        const lines = [
+          `${results.length} of ${files.length} photo(s) recognised, ${rows.length} card(s)${all.length > files.length ? ` (${all.length - files.length} more photo(s) in the folder, raise max_files)` : ""}.`,
+          ...(written.length ? [`Written: ${written.join(", ")}`] : ["Nothing written: no photo was recognised."]),
+          ...results.flatMap((r) => [`${path.basename(r.file)}:`, ...summarize(r.resp).split("\n").slice(1).filter((l) => /^\d+\. /.test(l))]),
+          ...(problems.length ? ["Not recognised:", ...problems] : []),
+          ...(stopped ? [`Stopped early: ${stopped}.`] : []),
+        ];
+        if (last?.credits && typeof last.credits.remaining === "number") lines.push(`Credits remaining: ${last.credits.remaining}`);
+        if (isDemo) lines.push("(Using the public demo key, 10 detections per day. Set NEOSATOSHI_API_KEY for folders.)");
         return {
-          content: [
-            { type: "text" as const, text },
-            { type: "text" as const, text: JSON.stringify(resp) },
-          ],
-          structuredContent: resp,
+          content: [{ type: "text" as const, text: lines.join("\n") }],
+          structuredContent: { photos: files.length, recognised: results.length, cards: rows.length, files_written: written, problems, stopped },
         };
       } catch (err) {
         if (err instanceof InputError || err instanceof ApiError) return errorResult(scrub(err.message, key));

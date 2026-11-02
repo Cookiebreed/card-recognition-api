@@ -17,6 +17,8 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
 | `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `football` |
 
+| `include_images` | boolean | Also return the catalog image of up to 10 recognised cards (from our CDN, at most 4 MB together), so the assistant can compare them with the photo. Default `false`. |
+
 Give exactly one of `image_path`, `image_url`, `image_base64`. The result has a short text summary per card, the full API response as JSON text, and the same response as `structuredContent`. API errors come back as tool errors with the API's `error` code and `message`.
 
 Example summary line:
@@ -31,7 +33,20 @@ Football line (no prices yet, the parallel is a suggestion a person should confi
 1. Niklas Beste | 2025-26 Topps Chrome Bundesliga #BA-NBE | Base Cards Autograph Variation | Sport-Club Freiburg | parallel Gold Wave Refractor /50 (suggested, confirm it) | serial 37 | 2 alternatives | no price yet
 ```
 
+When the client sends a progress token (Claude Code, Claude Desktop and most clients do), the detection is streamed and each card is reported as soon as it is recognised: on an 8 card Lorcana page the first card came after about 8 seconds, all eight after 11.
+
 The API identifies cards; it does not grade condition (a PSA, BGS or CGC slab, for football also SGC, comes back with the grade read from the label). One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds; a football card about 6 to 25 seconds. The client waits up to 120 seconds.
+
+### `recognize_folder`
+
+| Argument | Type | Description |
+|---|---|---|
+| `folder` | string | Local folder with the photos (not its subfolders). `~` is expanded. |
+| `tcg` | enum | One game per folder. Default `pokemon`. |
+| `max_files` | integer | At most this many photos, in name order. Default 20, at most 100. |
+| `output` | enum | `csv` (default), `json` (API format) or `both`, written as a new file into the folder. |
+
+One detection per photo, one credit per detected card. Existing files are never overwritten. It stops early on errors that would fail every photo (no credits, invalid key, demo limit). CSV columns: `file`, `card_index`, `name`, `tcg`, `language`, `set_name`, `set_code`, `number`, `rarity`, `cardmarket_id`, `cardmarket_trend_eur`, `cardmarket_avg30_eur`, `tcgplayer_market_usd`, `confidence`, `graded`, `season`, `subset`, `parallel`, `request_id`. Cells that start with `=`, `+`, `-` or `@` get a leading `'` so a spreadsheet does not run them.
 
 ### `search_cards`
 
@@ -152,7 +167,8 @@ Point any client at `node /absolute/path/to/mcp-server/dist/index.js` instead of
 
 * Files: only regular files are read. Directories, devices, sockets and pipes are refused. Symlinks are resolved first and the real target is checked. Only `.jpg`, `.jpeg` and `.png` whose content starts with JPEG or PNG magic bytes are accepted, at most 12 MB (football 4 MB).
 * `NEOSATOSHI_ALLOWED_DIRS` is checked against the resolved real path, so `../` and symlinks cannot escape it. Entries that do not exist grant nothing.
-* Network: the server only calls `https://europe-west1-neosatoshi.cloudfunctions.net/detectApi` and `.../cardsApi`. `image_url` is passed to the API, which fetches and validates it; the server itself never fetches URLs.
+* Network: the server only calls `https://europe-west1-neosatoshi.cloudfunctions.net/detectApi` and `.../cardsApi`, and with `include_images` our card image CDN `https://d1m1gwcombja0u.cloudfront.net` (other image hosts are skipped).
+* Writing: only `recognize_folder` writes, and only new files named `neosatoshi_cards_<date>-<time>.csv` / `.json` into the folder it read (same `NEOSATOSHI_ALLOWED_DIRS` check). `image_url` is passed to the API, which fetches and validates it; the server itself never fetches URLs.
 * No shell execution.
 * The API key is only sent in the `Authorization` header. It is never logged or returned, and it is scrubbed from error messages.
 
