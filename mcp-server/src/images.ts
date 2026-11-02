@@ -39,7 +39,8 @@ export function expandHome(p: string): string {
  * which means no directory restriction.
  */
 export function parseAllowedDirs(raw: string | undefined): string[] | null {
-  if (raw === undefined || raw.trim() === "") return null;
+  // An unfilled Claude Desktop extension field arrives as the literal "${user_config.allowed_dir}": no restriction.
+  if (raw === undefined || raw.trim() === "" || raw.trim().startsWith("${")) return null;
   return raw
     .split(path.delimiter)
     .map((s) => s.trim())

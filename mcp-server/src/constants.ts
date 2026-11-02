@@ -1,7 +1,7 @@
 // Facts about the NeoSatoshi card recognition API that the server relies on.
 
 export const SERVER_NAME = "neosatoshi-card-recognition";
-export const SERVER_VERSION = "0.4.0";
+export const SERVER_VERSION = "0.4.1";
 
 /** The detection endpoint. */
 export const API_ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";

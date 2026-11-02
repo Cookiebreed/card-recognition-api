@@ -106,7 +106,13 @@ claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -e NEOSATOSHI_ALL
 
 Leave out `-e NEOSATOSHI_API_KEY=...` to try it with the demo key.
 
-### Claude Desktop
+### Claude Desktop, one click
+
+Download [neosatoshi-card-mcp.mcpb](https://github.com/Cookiebreed/card-recognition-api/releases/latest/download/neosatoshi-card-mcp.mcpb) and open it: Claude Desktop installs the extension and asks for the optional API key and an optional allowed folder. Node.js comes with Claude Desktop.
+
+Build it yourself with `npm run build:mcpb` (needs the dev dependencies).
+
+### Claude Desktop, by hand
 
 Add to `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
 
@@ -183,6 +189,7 @@ npm test     # builds, then runs node:test (file safety and tool tests with a fa
 
 * `server.json` is for the official MCP registry (https://registry.modelcontextprotocol.io). Its `name` matches the `mcpName` in `package.json` (`io.github.Cookiebreed/card-recognition-mcp`); the registry checks GitHub ownership for `io.github.*` names.
 * `smithery.yaml` is for Smithery.
+* `mcpb/manifest.json` and `scripts/build-mcpb.mjs` build the Claude Desktop extension; upload `neosatoshi-card-mcp.mcpb` to each GitHub release under that exact name.
 
 ## License
 

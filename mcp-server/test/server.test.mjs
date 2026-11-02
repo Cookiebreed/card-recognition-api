@@ -102,6 +102,14 @@ test("API errors pass through error and message, key is scrubbed", async () => {
   assert.ok(!res.content[0].text.includes(key));
 });
 
+test("an unfilled Claude Desktop field is not a key and not a folder", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "${user_config.api_key}", NEOSATOSHI_ALLOWED_DIRS: "${user_config.allowed_dir}" }, fakeFetch(200, sample, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img } });
+  assert.equal(res.isError, undefined);
+  assert.equal(calls[0].init.headers.Authorization, `Bearer ${DEMO_API_KEY}`);
+});
+
 test("NEOSATOSHI_ALLOWED_DIRS is enforced by the tool", async () => {
   const calls = [];
   const other = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-allow-")));

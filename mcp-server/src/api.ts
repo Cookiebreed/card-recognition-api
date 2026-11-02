@@ -21,7 +21,9 @@ export class ApiError extends Error {
 }
 
 export function resolveApiKey(env: NodeJS.ProcessEnv = process.env): { key: string; isDemo: boolean } {
-  const fromEnv = env.NEOSATOSHI_API_KEY?.trim();
+  const raw = env.NEOSATOSHI_API_KEY?.trim();
+  // A Claude Desktop extension passes "${user_config.api_key}" through when the field was never filled in.
+  const fromEnv = raw && !raw.startsWith("${") ? raw : undefined;
   if (fromEnv) return { key: fromEnv, isDemo: fromEnv === DEMO_API_KEY };
   return { key: DEMO_API_KEY, isDemo: true };
 }
