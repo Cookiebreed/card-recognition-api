@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.7.0",
+    "version": "1.8.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games, 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -219,7 +219,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network).",
+            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network), or football_busy: the key already has 5 football photos in progress (Retry-After is set, nothing was charged).",
             "content": {
               "application/json": {
                 "schema": {
@@ -239,7 +239,7 @@
             }
           },
           "503": {
-            "description": "Football only. football_daily_limit: football recognition has used its daily capacity (it shares an eBay quota); resets_at and the Retry-After header say when it opens again, nothing was charged and the other games are not affected. football_unavailable: the recognizer is unavailable, retry later.",
+            "description": "Football only. football_daily_limit: football recognition has used its daily capacity (it shares an eBay quota); resets_at and the Retry-After header say when it opens again, nothing was charged and the other games are not affected. football_unavailable: the recognizer is unavailable, retry later. football_busy: the recognizer is busy, retry in a few seconds; nothing was charged.",
             "content": {
               "application/json": {
                 "schema": {
@@ -265,7 +265,7 @@
       "post": {
         "operationId": "searchCards",
         "summary": "Search the card catalog (paid), or search for the right card of a detection (free)",
-        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All six games in their catalog languages. A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
+        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All six games in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
         "requestBody": {
           "required": true,
           "content": {
@@ -375,7 +375,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. Retry-After is set.",
+            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. football_daily_limit, football_rate_limited. Retry-After is set.",
             "content": {
               "application/json": {
                 "schema": {
@@ -395,7 +395,7 @@
             }
           },
           "503": {
-            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). Retry later.",
+            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). football_unavailable. Retry later.",
             "content": {
               "application/json": {
                 "schema": {
@@ -532,7 +532,7 @@
       "get": {
         "operationId": "getCard",
         "summary": "One card by id (paid)",
-        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key.",
+        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
         "parameters": [
           {
             "name": "tcg",
@@ -546,7 +546,8 @@
                 "lorcana",
                 "yugioh",
                 "magic",
-                "star_wars_unlimited"
+                "star_wars_unlimited",
+                "football"
               ],
               "description": "Default: the detected card's game."
             }
@@ -609,6 +610,15 @@
             "description": "With set: picks a printing (Magic, SWU)."
           },
           {
+            "name": "ref",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Football only, required there: the ref of the search result (valid 24 hours, for the account that searched). Without it 400 ref_required, nothing charged."
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
@@ -631,7 +641,7 @@
             }
           },
           "400": {
-            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query.",
+            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, ref_required, ref_invalid, ref_expired (football).",
             "content": {
               "application/json": {
                 "schema": {
@@ -701,7 +711,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, daily_cap_reached. Retry-After is set.",
+            "description": "rate_limited, daily_cap_reached. football_daily_limit, football_rate_limited. Retry-After is set.",
             "content": {
               "application/json": {
                 "schema": {
@@ -721,7 +731,7 @@
             }
           },
           "503": {
-            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). Retry later.",
+            "description": "cards_api_disabled, limiter_unavailable, billing_unavailable (nothing was charged). football_unavailable. Retry later.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1540,9 +1550,10 @@
               "lorcana",
               "yugioh",
               "magic",
-              "star_wars_unlimited"
+              "star_wars_unlimited",
+              "football"
             ],
-            "description": "The game to search."
+            "description": "The game to search. football: text search only (the player, optionally with set or season words), no language, no prices; each result carries a ref for the lookup."
           },
           "q": {
             "type": "string",
@@ -1570,7 +1581,7 @@
               "ko",
               "zh"
             ],
-            "description": "Default: en (Pokémon, One Piece, Lorcana, Yu-Gi-Oh!, Magic, SWU). Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es."
+            "description": "Default: en (Pokémon, One Piece, Lorcana, Yu-Gi-Oh!, Magic, SWU). Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es. Football cards have no language: leave it out."
           },
           "limit": {
             "type": "integer",
@@ -1595,7 +1606,7 @@
             "items": {
               "$ref": "#/components/schemas/Card"
             },
-            "description": "Full card objects in the detection shape; confidence, image_quality and graded are null."
+            "description": "Full card objects in the detection shape; confidence, image_quality and graded are null. Football results carry ref (pass it to the lookup within 24 hours) and prices null."
           },
           "count": {
             "type": "integer"

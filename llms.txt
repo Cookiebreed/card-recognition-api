@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition API
 
-> Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering and Star Wars: Unlimited: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices. Made by NeoSatoshi (NeoGen Solutions GmbH, Bern, Switzerland).
+> Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited and football (soccer) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices. Made by NeoSatoshi (NeoGen Solutions GmbH, Bern, Switzerland).
 
 ## Call
 
@@ -9,7 +9,7 @@
 * Public demo key (intentionally public, no signup, 10 detections per day per network): nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274
 * Body (JSON): {"image": "<base64 JPEG or PNG, max 12 MB>", "tcg": "pokemon"}
 * Alternative body: {"image_url": "https://...", "tcg": "pokemon"} (public https URL to a JPEG or PNG, max 12 MB)
-* tcg values: pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited
+* tcg values: pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, football
 * Default: one JSON body. One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds. Client timeout: at least 120 seconds.
 * Optional streaming: add "stream": true (or the header Accept: text/event-stream) to get Server-Sent Events: accepted, progress, card (each card as soon as it is recognised), then done (the same body as the JSON response) or error. Same cost. A reconnect is a new, charged detection.
 
@@ -21,6 +21,7 @@
 * Yu-Gi-Oh! TCG (yugioh): English, German, French, Italian, Spanish, Portuguese. Not OCG. One card per photo.
 * Magic: The Gathering (magic): English, German, French, Italian, Spanish. One card per photo.
 * Star Wars: Unlimited (star_wars_unlimited): English, German, French, Italian, Spanish. One card per photo.
+* Football (soccer) cards (football): Topps, Panini and other makers. One card front per photo, JPEG or PNG up to 4 MB, about 6 to 25 seconds. No card language.
 
 ## Response
 
@@ -28,19 +29,22 @@
 
 Each card: name, language, tcg (absent for Pokémon), set{id, ptcgo_code or code, name, number}, rarity, cardmarket_id, prices{cardmarket{trend, low, avg7, avg30, currency EUR}, tcgplayer (USD, where available)}, images{small, large}, confidence (0 to 1), image_quality{blurred, unusual_dimensions}, alternatives[].
 
-Game-specific: Pokémon name_ja, name_ko, name_zh, reverse_holo, first_edition, special_variant. One Piece card_id (for example OP01-003). Lorcana version, full_name, name_en, prices.cardmarket_foil. Yu-Gi-Oh! passcode, set.code, edition, price_versions, *_unconfirmed flags. Magic printing, prices.cardmarket_foil, TCGplayer foil price.
+Game-specific: Pokémon name_ja, name_ko, name_zh, reverse_holo, first_edition, special_variant. One Piece card_id (for example OP01-003). Lorcana version, full_name, name_en, prices.cardmarket_foil. Yu-Gi-Oh! passcode, set.code, edition, price_versions, *_unconfirmed flags. Magic printing, prices.cardmarket_foil, TCGplayer foil price. Football card_id (fb-...), season, subset, teams, rookie, card_type, sure, score, parallel{pick (only when sure), candidates[{name, print_run}], serial_number}; prices and images are null for football (no football prices yet).
+
+Graded slabs (PSA, BGS, CGC; football also SGC): graded{grader, grade, cert_number, label} as read from the label, null for a raw card. Never an estimated grade.
 
 A missing price is null, never 0.
 
 ## Errors
 
-JSON {error, message}. 400 missing_image, bad_image, image_too_large, unsupported_image, unsupported_tcg, bad_image_url, image_url_fetch_failed. 401 missing_api_key, invalid_api_key. 402 out_of_credits. 405 method_not_allowed. 422 no_card_detected (not charged). 429 rate_limited, demo_limit_reached. 502 backend step failed (retry). 504 detection_timeout (retry).
+JSON {error, message}. 400 missing_image, bad_image, image_too_large, unsupported_image, unsupported_tcg, bad_image_url, image_url_fetch_failed. 401 missing_api_key, invalid_api_key. 402 out_of_credits. 405 method_not_allowed. 422 no_card_detected, unreadable_image (football) (not charged). 429 rate_limited, demo_limit_reached, football_busy (5 football photos in progress per key). 502 backend step failed (retry). 503 football_daily_limit (resets_at), football_unavailable (football only, not charged). 504 detection_timeout (retry).
 
 ## Card search and corrections
 
-* Base: https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi, same Bearer key, all six games.
+* Base: https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi, same Bearer key, all six games and football.
 * Correct a wrong card (free, 24 hours): every card has "card_index", the response has "correction" with "request_id". POST /search with {"request_id", "card_index", "q": "<card name>"} (or "set" + "number") returns up to 5 full card objects, then POST /corrections with {"request_id", "card_index", "card_id"} returns the corrected card. 5 searches and 3 corrections per card.
 * Card search (paid): POST /search with {"tcg": "pokemon", "q": "charizard 4/102"} (or "set" + "number", optional "language", "limit" up to 10); GET /cards/{tcg}/{card_id} returns one card. 0.5 credits per call that returns a card, no result is free, Idempotency-Key header makes a repeat free. Demo key: 10 searches and 3 lookups per day per network.
+* Football search: POST /search with {"tcg": "football", "q": "kane chrome 2023"} (the player, optional set or season words; no language, no prices yet). Each result has "ref"; GET /cards/football/{card_id}?ref=... (same key, within 24 hours) returns the card with all parallels of its subset and their print runs. Football detections cannot be corrected yet.
 
 ## Pricing
 
@@ -54,6 +58,6 @@ Card condition grading. The API identifies cards; it does not judge condition.
 
 * Documentation: https://neosatoshi.com/developers/detection-api
 * OpenAPI spec: https://neosatoshi.com/openapi.json (copy in this repository: openapi.json)
-* MCP server: mcp-server/ in this repository (npm: neosatoshi-card-mcp)
+* MCP server: mcp-server/ in this repository, npm package neosatoshi-card-mcp (stdio). Setup: claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp . Tools: recognize_cards, search_cards, correct_card, get_card, list_supported_games. Without a key it uses the demo key.
 * Terms: https://neosatoshi.com/termsofuse
 * Contact: api@neosatoshi.com

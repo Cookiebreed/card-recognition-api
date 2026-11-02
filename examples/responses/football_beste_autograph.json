@@ -1,0 +1,93 @@
+{
+  "request_id": "req_7a9592ca-1dc6-4391-9c51-bd17e752ecd5",
+  "count": 1,
+  "cards": [
+    {
+      "name": "Niklas Beste",
+      "tcg": "football",
+      "card_id": "fb-a3d-e3",
+      "set": {
+        "id": "topps-chrome-bundesliga-2025-26",
+        "name": "2025-26 Topps Chrome Bundesliga",
+        "number": "BA-NBE"
+      },
+      "season": "2025-26",
+      "subset": "Base Cards Autograph Variation",
+      "teams": [
+        "Sport-Club Freiburg"
+      ],
+      "rookie": false,
+      "card_type": "player",
+      "sure": true,
+      "score": 6.915,
+      "parallel": {
+        "pick": {
+          "name": "Gold Wave Refractor",
+          "print_run": 50
+        },
+        "sure": true,
+        "candidates": [
+          {
+            "name": "Gold Wave Refractor",
+            "print_run": 50
+          },
+          {
+            "name": "Gold Refractor",
+            "print_run": 50
+          },
+          {
+            "name": "Base",
+            "print_run": null
+          }
+        ],
+        "serial_number": "37"
+      },
+      "prices": null,
+      "images": {
+        "small": null,
+        "large": null
+      },
+      "alternatives": [
+        {
+          "card_id": "fb-a56-7b",
+          "name": "Niklas Beste",
+          "set": {
+            "id": "topps-chrome-sapphire-bundesliga-2025-26",
+            "name": "2025-26 Topps Chrome Sapphire Bundesliga",
+            "number": "BA-NBE"
+          },
+          "season": "2025-26",
+          "subset": "Base Cards Autograph Variation",
+          "teams": [
+            "Sport-Club Freiburg"
+          ],
+          "rookie": false,
+          "card_type": "player",
+          "score": 3.595
+        },
+        {
+          "card_id": "fb-a3d-93",
+          "name": "Niklas Beste",
+          "set": {
+            "id": "topps-chrome-bundesliga-2025-26",
+            "name": "2025-26 Topps Chrome Bundesliga",
+            "number": "UB-6"
+          },
+          "season": "2025-26",
+          "subset": "Ultrabeam",
+          "teams": [
+            "Sport-Club Freiburg"
+          ],
+          "rookie": false,
+          "card_type": "player",
+          "score": 3.029
+        }
+      ],
+      "graded": null,
+      "card_index": 0
+    }
+  ],
+  "credits": {
+    "remaining": 4982
+  }
+}

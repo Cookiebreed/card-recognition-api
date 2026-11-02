@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition API
 
-Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering and Star Wars: Unlimited: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices.
+Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited and football (soccer) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices (football: player, release and parallel).
 
 This repository contains runnable examples (curl, Python, Node.js), an MCP server for AI assistants, a Postman collection and a copy of the OpenAPI spec. The API is run by [NeoSatoshi](https://neosatoshi.com) (NeoGen Solutions GmbH, Bern, Switzerland).
 
@@ -58,6 +58,7 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 | Yu-Gi-Oh! TCG (not OCG) | `yugioh` | English, German, French, Italian, Spanish, Portuguese | One |
 | Magic: The Gathering | `magic` | English, German, French, Italian, Spanish | One |
 | Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | One |
+| Football (soccer) cards: Topps, Panini and other makers | `football` | (no card language) | One, the card front, at most 4 MB |
 
 ## Request
 
@@ -69,9 +70,9 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 
 | Field | Required | Description |
 |---|---|---|
-| `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB. |
+| `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB (football: 4 MB). |
 | `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
-| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic` or `star_wars_unlimited`. |
+| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited` or `football`. |
 | `stream` | no | `true` for Server-Sent Events, see [Streaming](#streaming). The header `Accept: text/event-stream` does the same. |
 
 ## Response
@@ -117,6 +118,7 @@ More recordings:
 
 * [lorcana_en_genie.json](examples/responses/lorcana_en_genie.json): Disney Lorcana, English, photo [example_api_lorcana.jpg](examples/images/example_api_lorcana.jpg)
 * [lorcana_de_blume.json](examples/responses/lorcana_de_blume.json): Disney Lorcana, German (foil detected), photo [example_api_lorcana_de.jpg](examples/images/example_api_lorcana_de.jpg)
+* [football_beste_autograph.json](examples/responses/football_beste_autograph.json): football, a numbered autograph (Gold Wave Refractor 37/50), shortened to two of its four alternatives
 * [catalog-shape/](examples/responses/catalog-shape/): One Piece, Lorcana, Yu-Gi-Oh! and Magic responses recorded from clean catalog images, included only to show the response shape per game (the catalog images themselves are not in this repo)
 
 ### Fields shared by every game
@@ -130,7 +132,7 @@ More recordings:
 | `demo` | Public demo key only, instead of credits: `limit_per_day` and `remaining_today` for your network. |
 | `name` | Card name as printed. |
 | `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
-| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic` or `star_wars_unlimited`. Absent for Pokémon. |
+| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited` or `football`. Absent for Pokémon. |
 | `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
 | `rarity` | Rarity as named by the game. |
 | `cardmarket_id` | Cardmarket product ID, or null. |
@@ -152,6 +154,9 @@ A missing price is `null`, never `0`.
 | Disney Lorcana | `version`, `full_name`, `name_en`, `prices.cardmarket_foil` |
 | Yu-Gi-Oh! TCG | `passcode`, `set.code`, `edition`, `price_versions`, `*_unconfirmed` flags (for example `print_unconfirmed`: the exact print could not be confirmed, check `alternatives`) |
 | Magic: The Gathering | printing (`set.code`, `set.number`, `print_unconfirmed`), `prices.cardmarket_foil`, TCGplayer foil price (`prices.tcgplayer.foil`) |
+| Football | `card_id` (`fb-...`), `season`, `subset`, `teams`, `rookie`, `card_type`, `sure`, `score`, `parallel` (`pick` only when the recognizer is sure, `candidates` with `print_run`, `serial_number`). `prices` and `images` are null: no football prices in the API yet, and no reference images. |
+
+Graded slabs: a photo of a PSA, BGS or CGC slab (football also SGC) fills `graded` with the grader, the grade and the cert number as read from the label; `null` for a raw card. The grade is never estimated.
 
 The full field reference is in the [documentation](https://neosatoshi.com/developers/detection-api).
 
@@ -161,27 +166,28 @@ Errors return JSON with `error` (a code) and usually `message`.
 
 | HTTP | `error` | Meaning |
 |---|---|---|
-| 400 | `missing_image`, `bad_image`, `image_too_large`, `unsupported_image`, `unsupported_tcg` | Fix the request. Only JPEG and PNG up to 12 MB. |
+| 400 | `missing_image`, `bad_image`, `image_too_large`, `unsupported_image`, `unsupported_tcg` | Fix the request. Only JPEG and PNG up to 12 MB (football 4 MB). |
 | 400 | `bad_image_url`, `image_url_fetch_failed` | Only with `image_url`: the URL is invalid or could not be fetched. |
 | 401 | `missing_api_key`, `invalid_api_key` | Check the `Authorization` header. |
 | 402 | `out_of_credits` | The plan has no card scans left. |
 | 405 | `method_not_allowed` | Only `POST`. |
-| 422 | `no_card_detected` | No card recognised. Not charged. |
-| 429 | `rate_limited`, `demo_limit_reached` | Slow down, or the demo key's 10 per day per network are used up. |
+| 422 | `no_card_detected`, `unreadable_image` (football) | No card recognised. Not charged. |
+| 429 | `rate_limited`, `demo_limit_reached`, `football_busy` | Slow down, or the demo key's 10 per day per network are used up, or the key already has 5 football photos in progress (`Retry-After`). |
 | 502 | (backend step failed) | Retry. |
+| 503 | `football_daily_limit`, `football_unavailable`, `football_busy` | Football only: the daily football capacity is used up (`resets_at`), or the recognizer is unavailable or busy. Not charged; the other games still work. |
 | 504 | `detection_timeout` | Often a cold start. Retry. |
 
 ## Limits and pricing
 
-* Images: JPEG or PNG, at most 12 MB. Pokémon: several cards per photo (best up to about 20). Other games: one card per photo.
-* One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period. Use a client timeout of at least 120 seconds.
+* Images: JPEG or PNG, at most 12 MB (football 4 MB). Pokémon: several cards per photo (best up to about 20). Other games: one card per photo.
+* One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football card about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
 * The API identifies cards. It does not grade card condition.
 
 ## Card search and corrections
 
-Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All six games.
+Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All six games and football.
 
 * **Correct a detection (free):** every detected card has `card_index`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `request_id`, `card_index` and `q` (a card name, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card.
 * **Card search (paid):** `POST /search` with `tcg` and `q` (or `set` + `number`), optional `language` and `limit` (up to 10). `GET /cards/{tcg}/{card_id}` returns one card, for example to refresh a price. 0.5 credits per call that returns a card, from the same balance as detection; no result is free. An `Idempotency-Key` header makes a repeat free. Daily limit per plan; the demo key allows 10 searches and 3 lookups per day per network.
@@ -192,6 +198,8 @@ curl -X POST https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search 
   -H "Content-Type: application/json" \
   -d '{"tcg": "pokemon", "q": "charizard 4/102", "limit": 3}'
 ```
+
+**Football:** `{"tcg": "football", "q": "kane chrome 2023"}`, text only (the player, optionally with set or season words), no `language`, no prices yet. Each result carries `ref`; `GET /cards/football/{card_id}?ref=...` (same key, within 24 hours) returns the card with all parallels of its subset and their print runs. Without a valid `ref` the lookup is 400 and free. Football detections cannot be corrected yet.
 
 Details: https://neosatoshi.com/developers/detection-api#card-search
 
@@ -207,7 +215,7 @@ If you only need a rough description of a photo, a general vision LLM may be eno
 
 ## MCP server (Claude, Cursor, Codex and other AI assistants)
 
-[mcp-server/](mcp-server/) is a stdio MCP server with five tools: `recognize_cards` (local file, https URL or base64), `search_cards`, `correct_card`, `get_card` and `list_supported_games`. Quick setup for Claude Code:
+[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with five tools: `recognize_cards` (local file, https URL or base64), `search_cards`, `correct_card`, `get_card` and `list_supported_games`, for all six games and football. Quick setup for Claude Code:
 
 ```bash
 claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp
@@ -237,16 +245,19 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
 
 **Can it recognise several cards in one photo?**
-For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh!, Magic and Star Wars: Unlimited, send one card per photo.
+For Pokémon, yes: binder pages work, best up to about 20 cards per photo. For One Piece, Lorcana, Yu-Gi-Oh!, Magic, Star Wars: Unlimited and football cards, send one card per photo.
 
 **Does it return prices?**
-Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`.
+Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`. Football cards have no prices in the API yet.
 
 **Does it recognise Japanese, Korean or Chinese cards?**
 Pokémon: Japanese, Korean and Simplified Chinese, besides English, German, French, Italian and Spanish. One Piece: English and Japanese. See the table above for the other games.
 
 **Does it grade card condition?**
 No. It identifies which card it is (set, number, rarity, language, variant fields). It does not judge condition.
+
+**Does it recognise football (soccer) cards?**
+Yes, with `"tcg": "football"`: Topps, Panini and other makers, one card front per photo (at most 4 MB). It returns the player, the release (set and number), season, subset, teams, rookie flag and the parallel (three candidates with print runs, a pick only when it is sure). No prices yet. `search_cards` and the card search find football cards by player name.
 
 **Does it support Yu-Gi-Oh! OCG (Asian) cards?**
 No, only the TCG in English, German, French, Italian, Spanish and Portuguese.

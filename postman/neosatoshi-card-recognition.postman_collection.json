@@ -195,6 +195,68 @@
             },
             "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=magic."
           }
+        },
+        {
+          "name": "Detect Star Wars: Unlimited (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"star_wars_unlimited\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=star_wars_unlimited."
+          }
+        },
+        {
+          "name": "Detect Football (soccer) cards (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"football\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (the card front, max 4 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+          }
         }
       ]
     },
@@ -357,6 +419,68 @@
           }
         },
         {
+          "name": "Detect Star Wars: Unlimited (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"star_wars_unlimited\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=star_wars_unlimited."
+          }
+        },
+        {
+          "name": "Detect Football (soccer) cards (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"football\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (the card front, max 4 MB), fetched by the API. Set the collection variable imageUrl. tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+          }
+        },
+        {
           "name": "Stream Pokémon cards as Server-Sent Events (image URL)",
           "request": {
             "method": "POST",
@@ -385,6 +509,196 @@
               ]
             },
             "description": "Each card arrives as an event as soon as it is recognised, then done with the full result."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Card search",
+      "description": "Card search and lookup (paid: 0.5 credits per call that returns a card, never on the demo key) and free corrections of a detection. Docs: https://neosatoshi.com/developers/detection-api#card-search",
+      "item": [
+        {
+          "name": "Search Pokémon cards",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tcg\": \"pokemon\",\n  \"q\": \"charizard 4/102\",\n  \"limit\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "Full card objects with prices and Cardmarket product id, at most 10, has_more but no total."
+          }
+        },
+        {
+          "name": "Get one card by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/cards/pokemon/base1-4",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "cards",
+                "pokemon",
+                "base1-4"
+              ]
+            },
+            "description": "The current card object, for example to refresh a price. Unknown card: 404, free."
+          }
+        },
+        {
+          "name": "Search football cards",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tcg\": \"football\",\n  \"q\": \"kane chrome 2023\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "Text only: the player with optional set or season words. No language, no prices yet. Each result has a ref for the lookup."
+          }
+        },
+        {
+          "name": "Get a football card (with ref)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/cards/football/fb-a2a-2a?ref=RESULT_REF",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "cards",
+                "football",
+                "fb-a2a-2a"
+              ],
+              "query": [
+                {
+                  "key": "ref",
+                  "value": "RESULT_REF"
+                }
+              ]
+            },
+            "description": "Needs the ref of a search result of the same key, valid 24 hours; returns the card with all parallels of its subset and their print runs. Without a valid ref: 400, free."
+          }
+        },
+        {
+          "name": "Correction search for a detected card (free)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_id\": \"req_...\",\n  \"card_index\": 0,\n  \"q\": \"charizard\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "Within 24 hours of the detection, 5 searches per detected card, at most 5 results. Then POST /cardsApi/corrections."
+          }
+        },
+        {
+          "name": "Correct a detected card (free)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_id\": \"req_...\",\n  \"card_index\": 0,\n  \"card_id\": \"base1-4\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/corrections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "corrections"
+              ]
+            },
+            "description": "card_id from a correction search result or the card alternatives. 3 corrections per card."
           }
         }
       ]

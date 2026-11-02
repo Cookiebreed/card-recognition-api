@@ -1,5 +1,5 @@
 // Image input handling with the safety checks the server promises:
-// regular files only, symlinks resolved, JPEG or PNG by magic bytes, 12 MB cap,
+// regular files only, symlinks resolved, JPEG or PNG by magic bytes, 12 MB cap (4 MB for football),
 // optional directory allowlist (NEOSATOSHI_ALLOWED_DIRS). Nothing here touches the network.
 
 import { constants as fsConstants, promises as fs } from "node:fs";
@@ -15,7 +15,7 @@ export class InputError extends Error {
 }
 
 const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png"]);
-const MAX_MB = MAX_IMAGE_BYTES / (1024 * 1024);
+const mb = (bytes: number) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
 
 export type ImageKind = "jpeg" | "png";
 
@@ -117,7 +117,7 @@ export async function readImageFile(inputPath: string, opts: ReadImageOptions): 
     throw new InputError(`Only .jpg, .jpeg and .png files are accepted (got "${ext || "no extension"}").`);
   }
   if (st.size > maxBytes) {
-    throw new InputError(`Image is larger than ${MAX_MB} MB (${(st.size / 1048576).toFixed(1)} MB).`);
+    throw new InputError(`Image is larger than ${mb(maxBytes)} MB (${(st.size / 1048576).toFixed(1)} MB).`);
   }
   if (st.size === 0) throw new InputError("Image file is empty.");
 
@@ -133,7 +133,7 @@ export async function readImageFile(inputPath: string, opts: ReadImageOptions): 
   try {
     const fst = await handle.stat();
     if (!fst.isFile()) throw new InputError(`Not a regular file: ${requested}`);
-    if (fst.size > maxBytes) throw new InputError(`Image is larger than ${MAX_MB} MB.`);
+    if (fst.size > maxBytes) throw new InputError(`Image is larger than ${mb(maxBytes)} MB.`);
     const buf = Buffer.alloc(fst.size);
     let offset = 0;
     while (offset < buf.length) {
@@ -164,11 +164,11 @@ export function normalizeBase64Image(input: string, maxBytes: number = MAX_IMAGE
   if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(b64)) throw new InputError("image_base64 is not valid base64.");
   // Rough upper bound before decoding, so a huge string is refused cheaply.
   if (Math.floor((b64.length * 3) / 4) > maxBytes + 3) {
-    throw new InputError(`Image is larger than ${MAX_MB} MB.`);
+    throw new InputError(`Image is larger than ${mb(maxBytes)} MB.`);
   }
   const buf = Buffer.from(b64, "base64");
   if (buf.length === 0) throw new InputError("image_base64 decodes to nothing.");
-  if (buf.length > maxBytes) throw new InputError(`Image is larger than ${MAX_MB} MB.`);
+  if (buf.length > maxBytes) throw new InputError(`Image is larger than ${mb(maxBytes)} MB.`);
   if (!sniffImageType(buf)) throw new InputError("image_base64 is not a JPEG or PNG image.");
   return buf.toString("base64");
 }

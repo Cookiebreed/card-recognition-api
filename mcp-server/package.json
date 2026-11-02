@@ -1,7 +1,7 @@
 {
   "name": "neosatoshi-card-mcp",
-  "version": "0.2.0",
-  "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering and Star Wars: Unlimited cards from a photo, with set, number, rarity, Cardmarket ID and daily prices.",
+  "version": "0.3.0",
+  "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited and football (soccer) cards from a photo, with set, number, rarity, Cardmarket ID and daily prices, and search the card catalog.",
   "mcpName": "io.github.Cookiebreed/card-recognition-mcp",
   "type": "module",
   "bin": {
@@ -33,7 +33,13 @@
     "yugioh",
     "magic-the-gathering",
     "cardmarket",
-    "tcg"
+    "tcg",
+    "star-wars-unlimited",
+    "football-cards",
+    "soccer-cards",
+    "sports-cards",
+    "topps",
+    "panini"
   ],
   "homepage": "https://neosatoshi.com/developers/detection-api",
   "author": "NeoGen Solutions GmbH <api@neosatoshi.com>",

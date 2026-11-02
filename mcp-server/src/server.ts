@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiError, cardsApi, detect, resolveApiKey, scrub, type DetectBody } from "./api.js";
-import { SERVER_NAME, SERVER_VERSION, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
+import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
 import { InputError, normalizeBase64Image, parseAllowedDirs, readImageFile, validateImageUrl } from "./images.js";
 import { summarize } from "./summary.js";
 
@@ -12,10 +12,11 @@ export interface ServerOptions {
 
 const RECOGNIZE_DESCRIPTION = [
   "Identify trading cards in a photo with the NeoSatoshi card recognition API.",
-  "Games: Pokémon (default; several cards per photo, binder pages work), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering and Star Wars: Unlimited (one card per photo).",
+  "Games: Pokémon (default; several cards per photo, binder pages work), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering and Star Wars: Unlimited (one card per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
   "Returns per card: name, language, set, number, rarity, Cardmarket product ID, daily Cardmarket prices in EUR (TCGplayer USD where available), confidence and alternatives.",
-  "It does not grade card condition.",
-  "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB), image_url (public https URL, forwarded to the API) or image_base64.",
+  "Football cards instead: the player, release (set, number), season, subset, teams, rookie flag, a sure flag, alternatives and the parallel (three candidates with print runs, a pick only when the recognizer is sure; a person should confirm it). No prices and no images for football yet; it takes about 6 to 25 seconds.",
+  "Graded slabs (PSA, BGS, CGC, for football also SGC) fill graded with the grade read from the label. It does not grade card condition.",
+  "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB, football 4 MB), image_url (public https URL, forwarded to the API) or image_base64.",
   "Uses the API key in NEOSATOSHI_API_KEY; without it, the public demo key is used (10 detections per day per network).",
   "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period.",
 ].join(" ");
@@ -25,6 +26,7 @@ const SEARCH_DESCRIPTION = [
   "Use it first to fix a wrong detection: pass request_id and card_index from recognize_cards. That correction search is free (5 searches per detected card within 24 hours, at most 5 results), then call correct_card.",
   "Without request_id it is the paid card search: 0.5 credits when it returns a card, nothing for no result.",
   "Query: q (a card name, at least 3 letters, optionally with the number like \"charizard 4/102\", or a printed code like OP01-003), or set + number. Wildcards and set-only or number-only queries are refused.",
+  "Football (tcg \"football\"): q only, the player with optional set or season words (\"kane chrome 2023\"), no language, set or number, no prices yet; each result carries a ref for get_card. Football detections cannot be corrected yet.",
 ].join(" ");
 
 const CORRECT_DESCRIPTION = [
@@ -36,9 +38,10 @@ const CORRECT_DESCRIPTION = [
 const GET_DESCRIPTION = [
   "Get one card by its card_id (for example to refresh its price or resolve a stored id). 0.5 credits when the card exists, nothing for an unknown card.",
   "For a wrong detection use search_cards with request_id and correct_card instead: those are free.",
+  "Football: pass the ref of a search_cards result (same API key, within 24 hours); the card then comes with all parallels of its subset and their print runs. Without a valid ref the call is refused and free.",
 ].join(" ");
 
-const LANGUAGE = z.string().optional().describe("Card language, e.g. en, de, fr, it, es, pt, ja, ko, zh (per game). Default: the detected card's language, else en.");
+const LANGUAGE = z.string().optional().describe("Card language, e.g. en, de, fr, it, es, pt, ja, ko, zh (per game). Default: the detected card's language, else en. Leave it out for football.");
 
 function errorResult(text: string) {
   return { isError: true, content: [{ type: "text" as const, text }] };
@@ -59,7 +62,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         image_path: z
           .string()
           .optional()
-          .describe("Path to a local JPEG or PNG file (max 12 MB). Absolute paths work best; ~ is expanded."),
+          .describe("Path to a local JPEG or PNG file (max 12 MB, football 4 MB). Absolute paths work best; ~ is expanded."),
         image_url: z
           .string()
           .optional()
@@ -67,11 +70,11 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         image_base64: z
           .string()
           .optional()
-          .describe("Base64-encoded JPEG or PNG (max 12 MB). A data:image/...;base64, prefix is accepted."),
+          .describe("Base64-encoded JPEG or PNG (max 12 MB, football 4 MB). A data:image/...;base64, prefix is accepted."),
         tcg: z
           .enum(TCG_VALUES)
           .optional()
-          .describe("Which game the photo shows. Default: pokemon."),
+          .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards."),
       },
       annotations: {
         title: "Recognize trading cards",
@@ -96,11 +99,12 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       const { key, isDemo } = resolveApiKey(env);
       try {
         const body: DetectBody = { tcg: args.tcg ?? "pokemon" };
+        const maxBytes = body.tcg === "football" ? FOOTBALL_MAX_IMAGE_BYTES : MAX_IMAGE_BYTES;
         if (args.image_path) {
-          const bytes = await readImageFile(args.image_path, { allowedDirs });
+          const bytes = await readImageFile(args.image_path, { allowedDirs, maxBytes });
           body.image = bytes.toString("base64");
         } else if (args.image_base64) {
-          body.image = normalizeBase64Image(args.image_base64);
+          body.image = normalizeBase64Image(args.image_base64, maxBytes);
         } else {
           body.image_url = validateImageUrl(args.image_url!);
         }
@@ -147,7 +151,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         request_id: z.string().optional().describe("request_id of a detection: makes this a free correction search."),
         card_index: z.number().int().min(0).optional().describe("cards[].card_index of the card to correct (with request_id)."),
         tcg: z.enum(TCG_VALUES).optional().describe("Game. Required without request_id; default with it: the detected card's game."),
-        q: z.string().optional().describe("Card name (at least 3 letters), optionally with the number, or a printed code."),
+        q: z.string().optional().describe("Card name (at least 3 letters), optionally with the number, or a printed code. Football: the player, optionally with set or season words."),
         set: z.string().optional().describe("Set id or code, together with number."),
         number: z.string().optional().describe("Card number, together with set (or q)."),
         language: LANGUAGE,
@@ -184,7 +188,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       description: GET_DESCRIPTION,
       inputSchema: {
         tcg: z.enum(TCG_VALUES).describe("Game of the card."),
-        card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key)."),
+        card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key; football: fb-...)."),
+        ref: z.string().optional().describe("Football only, required there: the ref of the search_cards result for this card_id (valid 24 hours)."),
         language: LANGUAGE,
         cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing."),
         set: z.string().optional().describe("Magic, SWU: set of the printing; Yu-Gi-Oh!: the printed code."),
@@ -194,7 +199,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
     },
     async (args) => {
       const qs = new URLSearchParams(
-        clean({ language: args.language, cardmarket_id: args.cardmarket_id?.toString(), set: args.set, number: args.number }) as Record<string, string>,
+        clean({ language: args.language, cardmarket_id: args.cardmarket_id?.toString(), set: args.set, number: args.number, ref: args.ref }) as Record<string, string>,
       ).toString();
       return callCards("GET", `/cards/${encodeURIComponent(args.tcg)}/${encodeURIComponent(args.card_id)}${qs ? `?${qs}` : ""}`);
     },
@@ -218,6 +223,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         `Images: ${g.limits.image_formats.join(" or ")}, max ${g.limits.max_image_size}.`,
         `Timing: ${g.limits.request}.`,
         `Demo key: ${g.limits.demo_key}. Billing: ${g.limits.billing}.`,
+        `Football: ${g.limits.football}.`,
+        `Card search: ${g.limits.card_search}.`,
         `Not supported: ${g.not_supported.join(", ")}. Docs: ${g.docs}`,
       );
       return {

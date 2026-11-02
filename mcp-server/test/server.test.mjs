@@ -42,7 +42,9 @@ test("lists all tools", async () => {
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "football"]);
+  assert.match(rec.description, /football/);
+  assert.ok(tools.find((t) => t.name === "get_card").inputSchema.properties.ref, "get_card takes the football ref");
 });
 
 test("recognize_cards sends base64 to the one endpoint and summarizes", async () => {
@@ -143,4 +145,51 @@ test("cards API errors come back as tool errors without the key", async () => {
   assert.equal(res.isError, true);
   assert.match(res.content[0].text, /429 correction_budget_exhausted/);
   assert.ok(!JSON.stringify(res).includes(key));
+});
+
+const football = JSON.parse(
+  fs.readFileSync(new URL("../../examples/responses/football_beste_autograph.json", import.meta.url), "utf8"),
+);
+
+test("recognize_cards football: sends tcg football and summarizes player, release and parallel", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, football, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "football" } });
+  assert.equal(res.isError, undefined);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "football", image: JPEG.toString("base64") });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /Niklas Beste \| 2025-26 Topps Chrome Bundesliga #BA-NBE/);
+  assert.match(line, /parallel Gold Wave Refractor \/50 \(suggested, confirm it\)/);
+  assert.match(line, /serial 37/);
+  assert.match(line, /no price yet/);
+  assert.doesNotMatch(line, /Cardmarket/);
+});
+
+test("recognize_cards football: a photo over 4 MB is refused before any call", async () => {
+  const calls = [];
+  const big = path.join(dir, "big.jpg");
+  fs.writeFileSync(big, Buffer.concat([JPEG, Buffer.alloc(4 * 1024 * 1024)]));
+  const client = await connect({}, fakeFetch(200, football, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: big, tcg: "football" } });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /larger than 4 MB/);
+  const ok = await client.callTool({ name: "recognize_cards", arguments: { image_path: big, tcg: "pokemon" } });
+  assert.equal(ok.isError, undefined, "the 12 MB cap still applies to the other games");
+  assert.equal(calls.length, 1);
+});
+
+test("football search and lookup: q only, then get_card with the ref", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { results: [{ card_id: "fb-a2a-2a", ref: "abc.def" }] }, calls));
+  await client.callTool({ name: "search_cards", arguments: { tcg: "football", q: "kane chrome 2023", limit: 5 } });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "football", q: "kane chrome 2023", limit: 5 });
+  await client.callTool({ name: "get_card", arguments: { tcg: "football", card_id: "fb-a2a-2a", ref: "lz3k1.Ab_-x" } });
+  assert.equal(calls[1].url, `${CARDS_API_BASE}/cards/football/fb-a2a-2a?ref=lz3k1.Ab_-x`);
+});
+
+test("list_supported_games names football and the card search prices", async () => {
+  const client = await connect({}, fakeFetch(200, sample, []));
+  const res = await client.callTool({ name: "list_supported_games", arguments: {} });
+  assert.match(res.content[0].text, /tcg="football"/);
+  assert.match(res.content[0].text, /Card search: .*0\.5 credits/);
 });
