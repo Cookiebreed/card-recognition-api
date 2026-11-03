@@ -48,8 +48,9 @@ const GET_DESCRIPTION = [
 ].join(" ");
 
 const EXPORT_DESCRIPTION = [
-  "Export the cards of up to 20 detections (request_id of recognize_cards or recognize_folder, within 48 hours) as the same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code: your account's condition for new cards, corrections made with correct_card, your saved export presets.",
-  "Default: the recommended CSV columns. preset: a saved preset id from list_export_presets. Or format csv/json with fields (field ids from list_export_presets); json_mode \"api\" gives the documented card shape, \"custom\" your fields.",
+  "Export the cards of up to 20 detections (request_id of recognize_cards or recognize_folder, within 48 hours) as the same file the NeoSatoshi website exports, built by the website's own export code: your account's condition for new cards, corrections made with correct_card, your saved settings, price rules and templates.",
+  "Formats: csv/json (custom export; preset = a saved preset id from list_export_presets, or fields and json_mode \"api\"/\"custom\"), tcgpowertools (the TCGPowerTools CSV for Cardmarket), shopify (the Shopify product CSV, prices in the store currency) and ebay (the eBay Seller Hub CSV for one eBay site).",
+  "Price options for tcgpowertools, shopify and ebay, like the buttons of the website's pricing step: price_source, min_price, markup_percent and rounding (a markup or rounding replaces your saved price rules; 0 = no markup). tcgpowertools: comment. shopify: store_currency, variant_mode. ebay: marketplace, one_row_per_card. Cards that cannot be exported are named in the answer, never guessed.",
   "Free (no credits). Needs your own API key (demo detections keep no cards) and exports enabled for the account. Football detections cannot be exported yet.",
   "save_to_folder writes the file into a local folder (allowed by NEOSATOSHI_ALLOWED_DIRS, never overwrites); without it the file content comes back in the answer (up to 100 KB).",
 ].join(" ");
@@ -340,9 +341,18 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       inputSchema: {
         request_ids: z.array(z.string()).min(1).max(20).describe("request_id of each detection to export, in the order the rows should have."),
         preset: z.string().optional().describe("Id of a saved export preset (list_export_presets). Not together with format, fields or json_mode."),
-        format: z.enum(["csv", "json"]).optional().describe("Default csv."),
+        format: z.enum(["csv", "json", "tcgpowertools", "shopify", "ebay"]).optional().describe("Default csv (the custom export)."),
         fields: z.array(z.string()).max(100).optional().describe("Field ids in column order (list_export_presets). Default: the recommended columns."),
         json_mode: z.enum(["api", "custom"]).optional().describe("JSON only: api = the documented card shape (fields ignored), custom = your fields. Default api."),
+        price_source: z.enum(["cardmarket_30d", "cardmarket_trend", "tcgplayer"]).optional().describe("tcgpowertools, shopify, ebay: the market price to start from. Default cardmarket_30d (tcgplayer not for tcgpowertools)."),
+        min_price: z.number().min(0).optional().describe("tcgpowertools, shopify, ebay: a floor for every row (EUR, the store currency, or the eBay site's currency)."),
+        markup_percent: z.number().optional().describe("tcgpowertools, shopify, ebay: markup in percent from the market price; replaces the saved price rules. 0 = no markup."),
+        rounding: z.enum(["up_full", "down_full", "nearest_10", "end_90", "end_99", "end_49_99", "end_9", "end_5_9"]).optional().describe("tcgpowertools, shopify, ebay: round every price; replaces the saved price rules."),
+        comment: z.string().max(500).optional().describe("tcgpowertools: the Cardmarket comment for every row (default: the one saved on the website)."),
+        store_currency: z.string().length(3).optional().describe("shopify: your Shopify store's currency, e.g. EUR (default: read from your connected store)."),
+        variant_mode: z.enum(["variants", "single"]).optional().describe("shopify: one product per card with variants, or one product per language, condition and printing (default: your saved choice)."),
+        marketplace: z.string().optional().describe("ebay: the eBay site, e.g. EBAY_DE, EBAY_US, EBAY_GB (default: your saved one)."),
+        one_row_per_card: z.boolean().optional().describe("ebay: one CSV row per copy instead of one row with a quantity."),
         save_to_folder: z.string().optional().describe("Local folder to write the file into (~ is expanded). Existing files are never overwritten."),
       },
       annotations: { title: "Export cards", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
@@ -355,7 +365,12 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         const resp: Record<string, any> = await cardsApi(
           "POST",
           "/exports",
-          clean({ request_ids: args.request_ids, preset: args.preset, format: args.format, fields: args.fields, json_mode: args.json_mode }),
+          clean({
+            request_ids: args.request_ids, preset: args.preset, format: args.format, fields: args.fields, json_mode: args.json_mode,
+            price_source: args.price_source, min_price: args.min_price, markup_percent: args.markup_percent, rounding: args.rounding,
+            comment: args.comment, store_currency: args.store_currency, variant_mode: args.variant_mode, marketplace: args.marketplace,
+            one_row_per_card: args.one_row_per_card,
+          }),
           key,
           opts.fetchImpl,
         );
@@ -367,6 +382,9 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         if (Array.isArray(resp.skipped) && resp.skipped.length) lines.push(`Left out: ${resp.skipped.map((m: any) => `${m.request_id} card ${m.card_index} (${m.reason})`).join(", ")}`);
         if (Array.isArray(resp.warnings) && resp.warnings.length) lines.push(`Check: ${resp.warnings.map((m: any) => `${m.request_id} card ${m.card_index} (${m.code})`).join(", ")}`);
         if (Array.isArray(resp.dropped_fields) && resp.dropped_fields.length) lines.push(`Unknown fields ignored: ${resp.dropped_fields.join(", ")}`);
+        if (resp.store_currency) lines.push(`Store currency: ${resp.store_currency}${resp.store_currency_source ? ` (${resp.store_currency_source})` : ""}`);
+        if (resp.marketplace) lines.push(`eBay site: ${resp.marketplace}${resp.currency ? `, ${resp.currency}` : ""}`);
+        if (Array.isArray(resp.notices) && resp.notices.length) lines.push(`Notes: ${resp.notices.map((n: any) => (typeof n === "string" ? n : n?.code ?? JSON.stringify(n))).join(", ")}`);
         if (dir) {
           const name = String(resp.filename || `neosatoshi-export.${resp.format === "json" ? "json" : "csv"}`);
           const ext = resp.format === "json" ? ".json" : ".csv";

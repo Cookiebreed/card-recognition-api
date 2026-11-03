@@ -360,3 +360,17 @@ test("list_export_presets: GET /exports/presets", async () => {
   assert.equal(calls[0].url, `${CARDS_API_BASE}/exports/presets`);
   assert.equal(calls[0].init.method, "GET");
 });
+
+test("export_cards: tcgpowertools, shopify and ebay options go to POST /exports unchanged", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x" }, fakeFetch(200, { ...EXPORT_RESP, format: "ebay", marketplace: "EBAY_DE", currency: "EUR", notices: ["own_photos_not_used"] }, calls));
+  const res = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], format: "ebay", marketplace: "EBAY_DE", one_row_per_card: false, min_price: 0.5, rounding: "end_99", price_source: "cardmarket_trend" } });
+  assert.equal(res.isError, undefined);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { request_ids: ["req_a"], format: "ebay", marketplace: "EBAY_DE", one_row_per_card: false, min_price: 0.5, rounding: "end_99", price_source: "cardmarket_trend" });
+  assert.match(res.content[0].text, /eBay site: EBAY_DE, EUR/);
+  assert.match(res.content[0].text, /own_photos_not_used/);
+  await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], format: "shopify", store_currency: "CHF", variant_mode: "single", markup_percent: 10 } });
+  assert.deepEqual(JSON.parse(calls[1].init.body), { request_ids: ["req_a"], format: "shopify", store_currency: "CHF", variant_mode: "single", markup_percent: 10 });
+  await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], format: "tcgpowertools", comment: "Toploader" } });
+  assert.deepEqual(JSON.parse(calls[2].init.body), { request_ids: ["req_a"], format: "tcgpowertools", comment: "Toploader" });
+});
