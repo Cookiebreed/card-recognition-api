@@ -71,6 +71,20 @@ use `search_cards` with `request_id` and `correct_card` instead, both free.
 Football: pass `ref` from the `search_cards` result (same key, within 24 hours). The card then comes with all parallels
 of its subset and their print runs. Without a valid `ref` the call is refused and free.
 
+### `export_cards`
+
+The cards of up to 20 detections (`request_ids` of `recognize_cards` or `recognize_folder`, within 48 hours) as the
+same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code: your condition for
+new cards, corrections made with `correct_card` and your saved presets apply. Default: the recommended CSV columns;
+`preset` (a saved preset id), or `format` `csv`/`json` with `fields` and `json_mode` (`api` = the documented card
+shape, `custom` = your fields). `save_to_folder` writes a new file into an allowed folder (never overwrites), otherwise
+the file comes back in the answer (up to 100 KB). Free, own key only (demo detections keep no cards), not for football
+yet. The answer names cards it left out (`skipped`) and cards whose price depends on a special version (`warnings`).
+
+### `list_export_presets`
+
+Your saved export presets (plus the built-in recommended CSV) and every field id `export_cards` takes. Free.
+
 ### `list_supported_games`
 
 Games, card languages, `tcg` values, limits and card search prices. No API call, no cost.
@@ -82,6 +96,7 @@ Games, card languages, `tcg` values, limits and card search prices. No API call,
 | `recognize_cards` | 1 credit per detected card, nothing without a card | 10 per day per network |
 | `search_cards` (card search), `get_card` | 0.5 credits when a card comes back | 10 searches, 3 lookups per day per network, never charged |
 | `search_cards` with `request_id`, `correct_card` | free | free |
+| `export_cards`, `list_export_presets` | free, 200 exports per day | not available (demo detections keep no cards) |
 
 ## Configuration
 

@@ -702,6 +702,95 @@
           }
         }
       ]
+    },
+    {
+      "name": "Exports",
+      "description": "Your detections as the same custom CSV or JSON file the NeoSatoshi website exports. Free, own API key, within 48 hours of the detection (the detection answer carries export.until).",
+      "item": [
+        {
+          "name": "Export detections as CSV",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_ids\": [\n    \"req_REPLACE_WITH_YOUR_REQUEST_ID\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/exports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "exports"
+              ]
+            },
+            "description": "The recommended CSV columns; the file is in content, its name in filename. skipped names cards left out."
+          }
+        },
+        {
+          "name": "Export detections as JSON (chosen fields)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_ids\": [\n    \"req_REPLACE_WITH_YOUR_REQUEST_ID\"\n  ],\n  \"format\": \"json\",\n  \"json_mode\": \"custom\",\n  \"fields\": [\n    \"name\",\n    \"set_name\",\n    \"number\",\n    \"cardmarket_id\",\n    \"price_cardmarket_trend\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/exports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "exports"
+              ]
+            },
+            "description": "json_mode custom: your fields with real types; json_mode api: the documented card shape."
+          }
+        },
+        {
+          "name": "Export presets and fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/exports/presets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "exports",
+                "presets"
+              ]
+            },
+            "description": "Presets saved on the website plus the built-in recommended CSV, and every field id."
+          }
+        }
+      ]
     }
   ]
 }

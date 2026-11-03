@@ -1,6 +1,6 @@
 {
   "name": "neosatoshi-card-mcp",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited and football (soccer) cards from a photo, with set, number, rarity, Cardmarket ID and daily prices, and search the card catalog.",
   "mcpName": "io.github.Cookiebreed/card-recognition-mcp",
   "type": "module",

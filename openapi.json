@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.8.0",
+    "version": "1.10.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -742,6 +742,154 @@
           }
         }
       }
+    },
+    "/cardsApi/exports": {
+      "post": {
+        "operationId": "exportCards",
+        "summary": "Export detections as CSV or JSON (free)",
+        "description": "The custom CSV or JSON file of up to 20 detections of your account, built by the NeoSatoshi website's own export code: saved presets, the condition for new cards from the website settings and API corrections are applied. Detections keep their cards for 48 hours (own API key; the detection answer carries `export`). Free, 200 exports per account per day.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The file and what was left out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "exports_need_own_key (demo key), feature_not_enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "detections_not_found (unknown, older than 48 hours, another account), preset_not_found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "nothing_to_export: every card was left out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited, daily_cap_reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "exports_unavailable, cards_api_disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cardsApi/exports/presets": {
+      "get": {
+        "operationId": "listExportPresets",
+        "summary": "Saved export presets and the field catalogue (free)",
+        "description": "The built-in recommended CSV and the presets saved on the website, plus every field id the export takes.",
+        "responses": {
+          "200": {
+            "description": "Presets and fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPresetsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "exports_need_own_key, feature_not_enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "exports_unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -865,6 +1013,23 @@
           "correction": {
             "type": "object",
             "description": "Only when this detection can be corrected for free: send request_id and cards[].card_index to the card search and the corrections endpoint until `until`.",
+            "properties": {
+              "request_id": {
+                "type": "string"
+              },
+              "until": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endpoint": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          },
+          "export": {
+            "type": "object",
+            "description": "Only when the cards of this detection were kept for POST /cardsApi/exports (own API key, exports on for the account): send request_id there until `until` (48 hours).",
             "properties": {
               "request_id": {
                 "type": "string"
@@ -1708,6 +1873,272 @@
                 "description": "Estimated credits left after this call (only when this call took a credit)."
               }
             }
+          }
+        }
+      },
+      "ExportRequest": {
+        "type": "object",
+        "required": [
+          "request_ids"
+        ],
+        "properties": {
+          "request_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "request_id of each detection, in row order."
+          },
+          "preset": {
+            "type": "string",
+            "description": "Id of a saved preset (GET /cardsApi/exports/presets). Not together with format, fields or json_mode."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json"
+            ],
+            "default": "csv"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "description": "Field ids in column order. Default: the recommended columns."
+          },
+          "json_mode": {
+            "type": "string",
+            "enum": [
+              "api",
+              "custom"
+            ],
+            "default": "api",
+            "description": "JSON only: api = the documented card shape, custom = the chosen fields with real types."
+          }
+        }
+      },
+      "ExportResponse": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string",
+            "enum": [
+              "text/csv",
+              "application/json"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json"
+            ]
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "columns": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "CSV column headers."
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "content": {
+            "type": "string",
+            "description": "The file: CSV (UTF-8 with BOM, CRLF) or JSON."
+          },
+          "dropped_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Unknown field ids that were ignored."
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "card_index": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "correction_not_kept",
+                        "correction_not_applicable",
+                        "not_listable",
+                        "unsupported_language",
+                        "over_card_limit"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "card_index": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "variant_price_unresolved"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "request_id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "not_found",
+                    "expired",
+                    "unavailable"
+                  ]
+                }
+              }
+            }
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "engine": {
+            "type": "object",
+            "description": "The website code that built the file.",
+            "properties": {
+              "commit": {
+                "type": "string"
+              },
+              "inputs": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ExportPresetsResponse": {
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "format": {
+                  "type": "string",
+                  "enum": [
+                    "csv",
+                    "json"
+                  ]
+                },
+                "json_mode": {
+                  "type": "string",
+                  "enum": [
+                    "api",
+                    "custom"
+                  ]
+                },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "built_in": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "header": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "group": {
+                  "type": "string"
+                },
+                "format": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "max_request_ids": {
+            "type": "integer"
+          },
+          "kept_hours": {
+            "type": "integer"
           }
         }
       }
