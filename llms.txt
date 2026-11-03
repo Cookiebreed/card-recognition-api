@@ -59,6 +59,6 @@ Card condition grading. The API identifies cards; it does not judge condition.
 
 * Documentation: https://neosatoshi.com/developers/detection-api
 * OpenAPI spec: https://neosatoshi.com/openapi.json (copy in this repository: openapi.json)
-* MCP server: mcp-server/ in this repository, npm package neosatoshi-card-mcp (stdio). Setup: claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp . Tools: recognize_cards, recognize_folder (a folder of photos to CSV or JSON), search_cards, correct_card, get_card, export_cards (detections to the same custom CSV or JSON the website exports, free, own key), list_export_presets, list_supported_games. Without a key it uses the demo key. Official MCP registry name: io.github.Cookiebreed/card-recognition-mcp.
+* MCP server: mcp-server/ in this repository, npm package neosatoshi-card-mcp (stdio). Setup: claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp . Tools: recognize_cards, recognize_folder (a folder of photos to CSV or JSON), search_cards, correct_card, get_card, export_cards (detections to the same file the website exports: custom CSV/JSON, TCGPowerTools, Shopify or eBay CSV; free, own key), list_export_presets, list_supported_games. Without a key it uses the demo key. Official MCP registry name: io.github.Cookiebreed/card-recognition-mcp.
 * Terms: https://neosatoshi.com/termsofuse
 * Contact: api@neosatoshi.com

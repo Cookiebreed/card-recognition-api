@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.10.0",
+    "version": "1.13.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
     "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
@@ -746,8 +746,8 @@
     "/cardsApi/exports": {
       "post": {
         "operationId": "exportCards",
-        "summary": "Export detections as CSV or JSON (free)",
-        "description": "The custom CSV or JSON file of up to 20 detections of your account, built by the NeoSatoshi website's own export code: saved presets, the condition for new cards from the website settings and API corrections are applied. Detections keep their cards for 48 hours (own API key; the detection answer carries `export`). Free, 200 exports per account per day.",
+        "summary": "Export detections as CSV, JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV (free)",
+        "description": "The custom CSV or JSON file, the TCGPowerTools CSV, the Shopify product CSV or the eBay Seller Hub draft CSV of up to 20 detections of your account, built by the NeoSatoshi website's own export code: saved presets, the condition for new cards from the website settings, the seller's price rules and templates and API corrections are applied. Detections keep their cards for 48 hours (own API key; the detection answer carries `export`). Free, 200 exports per account per day.",
         "requestBody": {
           "required": true,
           "content": {
@@ -770,7 +770,7 @@
             }
           },
           "400": {
-            "description": "invalid_request.",
+            "description": "invalid_request (also: marketplace is no eBay site); unknown_store_currency (store_currency is no ISO currency code).",
             "content": {
               "application/json": {
                 "schema": {
@@ -810,7 +810,7 @@
             }
           },
           "422": {
-            "description": "nothing_to_export: every card was left out.",
+            "description": "nothing_to_export: every card was left out. fx_unavailable (shopify, ebay): no exchange rate for the store or marketplace currency today. mixed_games (ebay): the detections hold cards of more than one game; export each game on its own.",
             "content": {
               "application/json": {
                 "schema": {
@@ -830,7 +830,7 @@
             }
           },
           "503": {
-            "description": "exports_unavailable, cards_api_disabled.",
+            "description": "exports_unavailable (also: your settings or templates could not be read), shop_currency_unavailable (shopify: the connected store did not tell its currency; pass store_currency), cards_api_disabled.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1899,9 +1899,13 @@
             "type": "string",
             "enum": [
               "csv",
-              "json"
+              "json",
+              "tcgpowertools",
+              "shopify",
+              "ebay"
             ],
-            "default": "csv"
+            "default": "csv",
+            "description": "tcgpowertools: the TCGPowerTools CSV for Cardmarket; shopify: the Shopify product CSV; ebay: the eBay Seller Hub draft CSV for one marketplace (all fixed columns)."
           },
           "fields": {
             "type": "array",
@@ -1919,6 +1923,70 @@
             ],
             "default": "api",
             "description": "JSON only: api = the documented card shape, custom = the chosen fields with real types."
+          },
+          "price_source": {
+            "type": "string",
+            "enum": [
+              "cardmarket_30d",
+              "cardmarket_trend",
+              "tcgplayer"
+            ],
+            "default": "cardmarket_30d",
+            "description": "tcgpowertools, shopify and ebay; tcgplayer for shopify and ebay only."
+          },
+          "min_price": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "tcgpowertools, shopify and ebay: floor for every row, also rows without a market price; EUR for tcgpowertools, the store currency for shopify, the marketplace currency for ebay. ebay: default the minimum saved on the website (eBay export defaults), 0 for none; eBay's own minimum of the marketplace always applies."
+          },
+          "markup_percent": {
+            "type": "number",
+            "exclusiveMinimum": -100,
+            "maximum": 1000,
+            "description": "tcgpowertools, shopify and ebay: the bulk markup from the market price; replaces the price rules, as on the website. 0 means no markup."
+          },
+          "rounding": {
+            "type": "string",
+            "enum": [
+              "up_full",
+              "down_full",
+              "nearest_10",
+              "end_90",
+              "end_99",
+              "end_49_99",
+              "end_9",
+              "end_5_9"
+            ],
+            "description": "tcgpowertools, shopify and ebay: the bulk rounding after the markup; replaces the price rules."
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "tcgpowertools only: the Cardmarket comment for every row; default: the one saved on the website."
+          },
+          "store_currency": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "shopify only: the currency of your Shopify store, every price is in it. Default: the currency of your connected store, read live; with no store connected, your display currency when USD or CHF, else EUR."
+          },
+          "variant_mode": {
+            "type": "string",
+            "enum": [
+              "variants",
+              "single"
+            ],
+            "description": "shopify only: variants = one product per card with language, condition and printing as variants; single = one product per language, condition and printing. Default: the mode saved on the website, else variants."
+          },
+          "marketplace": {
+            "type": "string",
+            "pattern": "^[Ee][Bb][Aa][Yy]_[A-Za-z]{2}$",
+            "description": "ebay only: the eBay site of the file, one of EBAY_US, EBAY_DE, EBAY_FR, EBAY_IT, EBAY_ES, EBAY_GB, EBAY_CA, EBAY_AU, EBAY_AT, EBAY_BE, EBAY_CH, EBAY_IE, EBAY_NL, EBAY_PL. Prices are in its currency (the one set for it in your eBay settings, else its own). Default: the marketplace saved on the website, else EBAY_US. One marketplace per call."
+          },
+          "one_row_per_card": {
+            "type": "boolean",
+            "default": false,
+            "description": "ebay only: one CSV row per scanned card (quantity 1 each) instead of one row per card with the quantity of its copies."
           }
         }
       },
@@ -1939,11 +2007,15 @@
             "type": "string",
             "enum": [
               "csv",
-              "json"
+              "json",
+              "tcgpowertools",
+              "shopify",
+              "ebay"
             ]
           },
           "row_count": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Lines in the file (TCGPowerTools: identical cards share one line with their quantity; Shopify: product, variant and image lines; eBay: listing rows below the header, identical cards share one row unless one_row_per_card)."
           },
           "columns": {
             "type": [
@@ -1997,7 +2069,10 @@
                         "correction_not_applicable",
                         "not_listable",
                         "unsupported_language",
-                        "over_card_limit"
+                        "over_card_limit",
+                        "variant_pick_needed",
+                        "price_missing",
+                        "image_missing"
                       ]
                     }
                   }
@@ -2026,7 +2101,9 @@
                     "code": {
                       "type": "string",
                       "enum": [
-                        "variant_price_unresolved"
+                        "variant_price_unresolved",
+                        "cardmarket_id_missing",
+                        "price_at_minimum"
                       ]
                     }
                   }
@@ -2066,6 +2143,102 @@
               },
               "inputs": {
                 "type": "string"
+              }
+            }
+          },
+          "card_count": {
+            "type": "integer",
+            "description": "tcgpowertools, shopify and ebay: cards in the file."
+          },
+          "ids_list": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable"
+            ],
+            "description": "tcgpowertools: whether the TCGPowerTools id list was available; without it the Cardmarket ids come from the cards only (see warnings)."
+          },
+          "store_currency": {
+            "type": "string",
+            "description": "shopify: the currency every price in the file is in."
+          },
+          "store_currency_source": {
+            "type": "string",
+            "enum": [
+              "request",
+              "shop",
+              "fallback"
+            ],
+            "description": "shopify: request = store_currency, shop = read from your connected store, fallback = no store connected (display currency rule)."
+          },
+          "variant_mode": {
+            "type": "string",
+            "enum": [
+              "variants",
+              "single"
+            ],
+            "description": "shopify: the variant mode of the file."
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "square_images_not_applied",
+                    "stock_images_only",
+                    "price_rules_not_applied",
+                    "saved_min_price_not_applied"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "shopify and ebay: notes about the whole file. square_images_not_applied (shopify): square images are on in your settings but the file has the stock images as they are. stock_images_only (ebay): your eBay CSV image setting uses your own photos, the file has the stock images. price_rules_not_applied (ebay): your eBay price rules are in another currency than the marketplace, so they were not applied (as on the website). saved_min_price_not_applied (ebay): the saved minimum belongs to another marketplace and has no currency, so it was not applied."
+          },
+          "marketplace": {
+            "type": "string",
+            "description": "ebay: the eBay site of the file."
+          },
+          "currency": {
+            "type": "string",
+            "description": "ebay: the currency every price in the file is in."
+          },
+          "min_price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "ebay: the seller minimum the prices were floored to (eBay's own minimum of the marketplace applies as well); null: none."
+          },
+          "min_price_source": {
+            "type": "string",
+            "enum": [
+              "request",
+              "saved",
+              "none"
+            ],
+            "description": "ebay: request = min_price, saved = the minimum saved on the website, none = no seller minimum."
+          },
+          "template": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "ebay: the CSV template titles and descriptions were built with (your saved CSV template when it is for this game, else the game's default).",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "built_in": {
+                "type": "boolean"
               }
             }
           }

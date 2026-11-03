@@ -74,10 +74,17 @@ of its subset and their print runs. Without a valid `ref` the call is refused an
 ### `export_cards`
 
 The cards of up to 20 detections (`request_ids` of `recognize_cards` or `recognize_folder`, within 48 hours) as the
-same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code: your condition for
-new cards, corrections made with `correct_card` and your saved presets apply. Default: the recommended CSV columns;
-`preset` (a saved preset id), or `format` `csv`/`json` with `fields` and `json_mode` (`api` = the documented card
-shape, `custom` = your fields). `save_to_folder` writes a new file into an allowed folder (never overwrites), otherwise
+same file the NeoSatoshi website exports, built by the website's own export code: your condition for new cards,
+corrections made with `correct_card`, your saved presets, price rules and templates apply.
+
+* `format` `csv`/`json` (default csv): the custom export. `preset` (a saved preset id), or `fields` and `json_mode`
+  (`api` = the documented card shape, `custom` = your fields).
+* `format` `tcgpowertools`: the TCGPowerTools CSV for Cardmarket (your TCGPowerTools rules and saved comment; `comment`).
+* `format` `shopify`: the Shopify product CSV, prices in the store currency (`store_currency`, else read from your
+  connected store; `variant_mode`).
+* `format` `ebay`: the eBay Seller Hub CSV for one site (`marketplace`, e.g. `EBAY_DE`; `one_row_per_card`).
+* For the last three: `price_source`, `min_price`, `markup_percent` and `rounding`, like the buttons of the website's
+  pricing step (a markup or rounding replaces your saved price rules; `markup_percent` 0 = none). `save_to_folder` writes a new file into an allowed folder (never overwrites), otherwise
 the file comes back in the answer (up to 100 KB). Free, own key only (demo detections keep no cards), not for football
 yet. The answer names cards it left out (`skipped`) and cards whose price depends on a special version (`warnings`).
 

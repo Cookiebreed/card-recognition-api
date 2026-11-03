@@ -215,7 +215,7 @@ If you only need a rough description of a photo, a general vision LLM may be eno
 
 ## MCP server (Claude, Cursor, Codex and other AI assistants)
 
-[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same custom CSV or JSON file the NeoSatoshi website exports, free), `list_export_presets` and `list_supported_games`, for all six games and football. It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
+[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same file the NeoSatoshi website exports: custom CSV/JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV, free), `list_export_presets` and `list_supported_games`, for all six games and football. It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
 
 ```bash
 claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp
