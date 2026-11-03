@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition MCP server
 
-MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
+MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
 
 * Transport: stdio
 * npm package: `neosatoshi-card-mcp`, binary `neosatoshi-card-mcp`
@@ -15,7 +15,7 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 | `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB (football 4 MB). `~` is expanded. |
 | `image_url` | string | Public `https://` URL of a JPEG or PNG. Forwarded to the API as is; the server never downloads it. |
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
-| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `football` |
+| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `football` |
 
 | `include_images` | boolean | Also return the catalog image of up to 10 recognised cards (from our CDN, at most 4 MB together), so the assistant can compare them with the photo. Default `false`. |
 
@@ -26,6 +26,18 @@ Example summary line:
 ```
 1. Cinderace ex | Scarlet & Violet Black Star Promos (PR-SV) #163 | Promo | en | Cardmarket 796939 | trend 3.59 EUR | confidence 0.85 | 5 alternatives
 ```
+
+Digimon line (alternative arts share the card number; the printing id and its variant follow the set):
+
+```
+1. WarGreymon | RELEASE SPECIAL BOOSTER Ver.1.0 [BT01-03] (BT1) #BT1-025 | BT1-025_P1 Alternative Art | SR | en | Cardmarket 620026 | trend 16.85 EUR | TCGplayer 9.54 USD | confidence 1
+```
+
+Digimon Card Game (`digimon`), English and Japanese: recognised by card number and name. When the picture cannot tell the
+alternative arts apart, `print_unconfirmed` is true, `card_id` is `dg-c-<number>` without a price, and the printings
+come as alternatives, each with its price, to pick with `correct_card`. Cardmarket prices (EUR) for English and Japanese
+printings, TCGplayer (USD) for English only. Older Digimon products (the 1999 card game, the 2000 trading cards) are not
+recognised.
 
 Football line (no prices yet, the parallel is a suggestion a person should confirm):
 

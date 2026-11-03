@@ -43,7 +43,7 @@ test("lists all tools", async () => {
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "football"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "football"]);
   assert.match(rec.description, /football/);
   assert.ok(tools.find((t) => t.name === "get_card").inputSchema.properties.ref, "get_card takes the football ref");
 });
@@ -202,6 +202,85 @@ test("list_supported_games names football and the card search prices", async () 
   assert.match(res.content[0].text, /tcg="football"/);
   assert.match(res.content[0].text, /Card search: .*0\.5 credits/);
   assert.match(res.content[0].text, /tcg="lorcana".*cards per photo: several/);
+});
+
+// Digimon card shape from the OpenAPI lookup example (GET /cardsApi/cards/digimon/dg-BT1-025_P1), shortened.
+const digimonCard = {
+  name: "WarGreymon",
+  name_en: "WarGreymon",
+  language: "en",
+  tcg: "digimon",
+  card_key: "BT1-025",
+  type: "Digimon",
+  level: 6,
+  colors: ["red"],
+  card_id: "dg-BT1-025_P1",
+  print_id: "BT1-025_P1",
+  set: { id: "BT1", code: "BT1", name: "RELEASE SPECIAL BOOSTER Ver.1.0 [BT01-03]", number: "BT1-025" },
+  rarity: "SR",
+  variant: "Alternative Art",
+  parallel_index: 1,
+  cardmarket_id: 620026,
+  finishes: ["normal"],
+  prices: {
+    cardmarket: { trend: 16.85, low: 14.99, avg7: 17.06, avg30: 17.3, currency: "EUR" },
+    tcgplayer: { market: 9.54, currency: "USD" },
+  },
+  print_unconfirmed: false,
+  number_unconfirmed: false,
+  confidence: 1,
+  image_quality: { blurred: false, unusual_dimensions: false },
+  alternatives: [],
+  graded: null,
+};
+
+test("recognize_cards digimon: sends tcg digimon and summarizes printing and prices", async () => {
+  const calls = [];
+  const resp = { request_id: "req_dg1", count: 1, cards: [digimonCard], credits: { remaining: 99 } };
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, resp, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "digimon" } });
+  assert.equal(res.isError, undefined);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "digimon", image: JPEG.toString("base64") });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /WarGreymon \| RELEASE SPECIAL BOOSTER Ver\.1\.0 \[BT01-03\] \(BT1\) #BT1-025/);
+  assert.match(line, /BT1-025_P1 Alternative Art/);
+  assert.match(line, /Cardmarket 620026 \| trend 16\.85 EUR \| TCGplayer 9\.54 USD/);
+});
+
+test("recognize_cards digimon: an open printing says so and offers the printings", async () => {
+  const open = {
+    ...digimonCard,
+    language: "ja",
+    card_id: "dg-c-BT1-025",
+    print_id: null,
+    variant: null,
+    cardmarket_id: null,
+    prices: { cardmarket: { trend: null, low: null, avg7: null, avg30: null, currency: "EUR" }, tcgplayer: { market: null, currency: "USD" } },
+    print_unconfirmed: true,
+    alternatives: [{ card_id: "dg-ja-BT1-025" }, { card_id: "dg-ja-BT1-025_P1" }],
+  };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_dg2", count: 1, cards: [open] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "digimon" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /unconfirmed: print/);
+  assert.match(line, /2 alternatives/);
+  assert.doesNotMatch(line, /TCGplayer/);
+});
+
+test("digimon search and lookup: a card number as q, get_card by printing id", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { card: digimonCard }, calls));
+  await client.callTool({ name: "search_cards", arguments: { tcg: "digimon", q: "BT1-025", language: "ja" } });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "digimon", q: "BT1-025", language: "ja" });
+  await client.callTool({ name: "get_card", arguments: { tcg: "digimon", card_id: "dg-BT1-025_P1" } });
+  assert.equal(calls[1].url, `${CARDS_API_BASE}/cards/digimon/dg-BT1-025_P1`);
+});
+
+test("list_supported_games names Digimon with English and Japanese", async () => {
+  const client = await connect({}, fakeFetch(200, sample, []));
+  const res = await client.callTool({ name: "list_supported_games", arguments: {} });
+  assert.match(res.content[0].text, /Digimon Card Game.*tcg="digimon", languages en, ja, cards per photo: several/);
+  assert.match(res.content[0].text, /Digimon: .*TCGplayer \(USD\) for English only/);
 });
 
 function sseFetch(events, calls) {

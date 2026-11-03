@@ -3,7 +3,7 @@
 #
 # Usage: ./stream.sh <image_url> [tcg]
 #   image_url: public https link to a JPEG or PNG
-#   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, football
+#   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, football
 #
 # Uses NEOSATOSHI_API_KEY, or the public demo key (10 detections per day per network).
 set -euo pipefail

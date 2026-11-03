@@ -50,6 +50,7 @@ export function summarizeCard(card: Obj, index: number): string {
   if (card.name_en && card.name_en !== card.name) parts.push(`EN name ${card.full_name_en ?? card.name_en}`);
   if (setPart || set.number) parts.push(`${setPart || "set ?"}${set.number ? ` #${set.number}` : ""}`);
   if (card.card_id && card.tcg === "onepiece") parts.push(card.card_id);
+  if (card.tcg === "digimon" && card.print_id) parts.push(card.variant ? `${card.print_id} ${card.variant}` : card.print_id);
   if (card.passcode) parts.push(`passcode ${card.passcode}`);
   if (card.rarity) parts.push(card.rarity);
   if (card.language) parts.push(card.language);

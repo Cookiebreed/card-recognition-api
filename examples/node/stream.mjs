@@ -3,7 +3,7 @@
 //
 // Usage: node stream.mjs <image_url> [tcg]
 //   image_url: public https link to a JPEG or PNG
-//   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, football
+//   tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, football
 //
 // Streaming helps with binder pages (all six trading card games). Football has one card
 // per photo, so there you get progress events, not a faster result.

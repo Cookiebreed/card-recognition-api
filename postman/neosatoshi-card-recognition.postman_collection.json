@@ -228,6 +228,37 @@
           }
         },
         {
+          "name": "Detect Digimon Card Game (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"digimon\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=digimon (English and Japanese cards)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (base64)",
           "request": {
             "method": "POST",
@@ -450,6 +481,37 @@
           }
         },
         {
+          "name": "Detect Digimon Card Game (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"digimon\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=digimon (English and Japanese cards)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (image_url)",
           "request": {
             "method": "POST",
@@ -635,6 +697,38 @@
               ]
             },
             "description": "Needs the ref of a search result of the same key, valid 24 hours; returns the card with all parallels of its subset and their print runs. Without a valid ref: 400, free."
+          }
+        },
+        {
+          "name": "Search Digimon cards by card number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tcg\": \"digimon\",\n  \"q\": \"BT1-025\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "A Digimon card number alone is a query (BT1-025_P1 for one printing); add \"language\": \"ja\" for Japanese cards. Results are full card objects, each with its card_id (dg-... for a printing). 0.5 credits when a card comes back."
           }
         },
         {

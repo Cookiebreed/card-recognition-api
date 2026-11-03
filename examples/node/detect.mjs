@@ -2,7 +2,7 @@
 // Detect the trading cards in one photo with the NeoSatoshi card recognition API.
 //
 // Usage: node detect.mjs <image.jpg|image.png> [tcg] [--json]
-//   tcg:    pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited
+//   tcg:    pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon
 //   --json: also print the full JSON response
 //
 // Node.js 18 or newer (built-in fetch), no dependencies.
@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 
 const ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
 const DEMO_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274";
-const TCGS = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited"];
+const TCGS = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon"];
 
 export async function detect(imagePath, tcg = "pokemon", apiKey = process.env.NEOSATOSHI_API_KEY || DEMO_KEY) {
   const image = (await readFile(imagePath)).toString("base64");

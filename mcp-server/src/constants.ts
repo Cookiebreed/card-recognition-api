@@ -1,7 +1,7 @@
 // Facts about the NeoSatoshi card recognition API that the server relies on.
 
 export const SERVER_NAME = "neosatoshi-card-recognition";
-export const SERVER_VERSION = "0.6.0";
+export const SERVER_VERSION = "0.7.0";
 
 /** The detection endpoint. */
 export const API_ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
@@ -20,7 +20,7 @@ export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 /** Football photos go to their own recognizer, which takes at most 4 MB. */
 export const FOOTBALL_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "football"] as const;
+export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "football"] as const;
 export type Tcg = (typeof TCG_VALUES)[number];
 
 export const SUPPORTED_GAMES = {
@@ -43,6 +43,12 @@ export const SUPPORTED_GAMES = {
     { tcg: "magic", name: "Magic: The Gathering", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "several (binder pages work)" },
     { tcg: "star_wars_unlimited", name: "Star Wars: Unlimited", languages: ["en", "de", "fr", "it", "es"], cards_per_photo: "several (binder pages work)" },
     {
+      tcg: "digimon",
+      name: "Digimon Card Game (not the 1999 card game or the 2000 trading cards)",
+      languages: ["en", "ja"],
+      cards_per_photo: "several (binder pages work)",
+    },
+    {
       tcg: "football",
       name: "Football (soccer) cards: Topps, Panini and other makers",
       languages: ["none (football cards have no card language)"],
@@ -57,6 +63,8 @@ export const SUPPORTED_GAMES = {
     billing: "own keys: one credit per detected card; images without a card are not charged",
     football:
       "player, release (set, number), season, subset, teams, rookie flag and the suggested parallel with print run; no prices and no images yet; about 6 to 25 seconds per photo; 5 football photos in progress per key",
+    digimon:
+      "recognised by card number and name; alternative arts share the number, the printing comes from the picture or is picked from the alternatives (print_unconfirmed); Cardmarket prices (EUR) for English and Japanese printings, TCGplayer (USD) for English only",
     card_search:
       "search_cards and get_card: 0.5 credits per call that returns a card, nothing for no result; correction searches and correct_card are free; demo key: 10 searches and 3 lookups per day per network; football lookups need the ref of a search result (24 hours)",
   },
