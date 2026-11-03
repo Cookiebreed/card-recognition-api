@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.13.0",
+    "version": "1.14.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes Pokémon (several cards per photo; English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). The other games need one card per photo. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all six games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes several cards per photo (binder pages work, best up to about 20 cards) in Pokémon (English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish), Digimon Card Game (English, Japanese) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). Several cards per photo work for football cards too: each card comes back as its own entry with its box on the photo, and a photo with a card back is never split. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all seven trading card games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -41,7 +41,7 @@
               },
               "examples": {
                 "pokemon": {
-                  "summary": "Pokémon (default, several cards per photo)",
+                  "summary": "Pokémon (default)",
                   "value": {
                     "image": "<base64-encoded JPEG or PNG>"
                   }
@@ -79,6 +79,13 @@
                   "value": {
                     "image": "<base64-encoded JPEG or PNG>",
                     "tcg": "star_wars_unlimited"
+                  }
+                },
+                "digimon": {
+                  "summary": "Digimon Card Game",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "digimon"
                   }
                 },
                 "football": {
@@ -265,7 +272,7 @@
       "post": {
         "operationId": "searchCards",
         "summary": "Search the card catalog (paid), or search for the right card of a detection (free)",
-        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All six games in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
+        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All seven trading card games in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
         "requestBody": {
           "required": true,
           "content": {
@@ -532,7 +539,7 @@
       "get": {
         "operationId": "getCard",
         "summary": "One card by id (paid)",
-        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
+        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Digimon Card Game: the card_id of a printing (dg-BT1-025_P1, dg-ja-BT1-025_P1; the id names its language) or of the card (dg-c-BT1-025, or the bare number BT1-025), which answers the card with its printings. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
         "parameters": [
           {
             "name": "tcg",
@@ -547,6 +554,7 @@
                 "yugioh",
                 "magic",
                 "star_wars_unlimited",
+                "digimon",
                 "football"
               ],
               "description": "Default: the detected card's game."
@@ -636,6 +644,73 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CardLookupResponse"
+                },
+                "examples": {
+                  "digimon": {
+                    "summary": "Digimon Card Game: an alternative art printing, GET /cardsApi/cards/digimon/dg-BT1-025_P1",
+                    "value": {
+                      "card": {
+                        "name": "WarGreymon",
+                        "name_en": "WarGreymon",
+                        "language": "en",
+                        "tcg": "digimon",
+                        "card_key": "BT1-025",
+                        "type": "Digimon",
+                        "level": 6,
+                        "colors": [
+                          "red"
+                        ],
+                        "card_id": "dg-BT1-025_P1",
+                        "print_id": "BT1-025_P1",
+                        "set": {
+                          "id": "BT1",
+                          "code": "BT1",
+                          "name": "RELEASE SPECIAL BOOSTER Ver.1.0 [BT01-03]",
+                          "number": "BT1-025"
+                        },
+                        "rarity": "SR",
+                        "variant": "Alternative Art",
+                        "parallel_index": 1,
+                        "cardmarket_id": 620026,
+                        "finishes": [
+                          "normal"
+                        ],
+                        "prices": {
+                          "cardmarket": {
+                            "trend": 16.85,
+                            "low": 14.99,
+                            "avg7": 17.06,
+                            "avg30": 17.3,
+                            "currency": "EUR"
+                          },
+                          "tcgplayer": {
+                            "market": 9.54,
+                            "currency": "USD"
+                          }
+                        },
+                        "images": {
+                          "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_digimon/en/BT1/BT1-025_P1.png",
+                          "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_digimon/en/BT1/BT1-025_P1.png"
+                        },
+                        "print_unconfirmed": false,
+                        "number_unconfirmed": false,
+                        "print_source": "single",
+                        "art_unconfirmed": false,
+                        "confidence": 1,
+                        "image_quality": {
+                          "blurred": false,
+                          "unusual_dimensions": false
+                        },
+                        "alternatives": [],
+                        "graded": null
+                      },
+                      "billing": {
+                        "charged_credits": 0.5,
+                        "source": "debited",
+                        "prepaid_half": true
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -908,7 +983,7 @@
           "image": {
             "type": "string",
             "contentEncoding": "base64",
-            "description": "Base64-encoded JPEG or PNG, at most 12 MB (football: at most 4 MB). Pokémon: one or more cards (binder pages work, best up to about 20 cards). Other games: one card per image (football: the card front)."
+            "description": "Base64-encoded JPEG or PNG, at most 12 MB (football: at most 4 MB). One or more cards in all seven trading card games and in football (binder pages work, best up to about 20 cards). Football: card fronts; a photo with a card back is never split."
           },
           "image_url": {
             "type": "string",
@@ -924,6 +999,7 @@
               "yugioh",
               "magic",
               "star_wars_unlimited",
+              "digimon",
               "football"
             ],
             "default": "pokemon",
@@ -992,7 +1068,7 @@
           },
           "warnings": {
             "type": "array",
-            "description": "Only when the image was processed in part. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest. code partial_recognition (football): part of the recognizer was unavailable, so the result may be less exact.",
+            "description": "Only when the image was processed in part, or when cards on it could not be read. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest. code partial_recognition (football): part of the recognizer was unavailable, so the result may be less exact. code cards_too_small (football): count cards on the photo were too small to read; they are not returned and not charged.",
             "items": {
               "type": "object",
               "properties": {
@@ -1001,8 +1077,13 @@
                   "enum": [
                     "credits_ran_out",
                     "incomplete",
-                    "partial_recognition"
+                    "partial_recognition",
+                    "cards_too_small"
                   ]
+                },
+                "count": {
+                  "type": "integer",
+                  "description": "Only with cards_too_small: how many cards were too small to read."
                 },
                 "message": {
                   "type": "string"
@@ -1048,7 +1129,7 @@
       },
       "Card": {
         "type": "object",
-        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; football season, subset, teams, rookie, card_type, sure, score, parallel (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
+        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; Digimon Card Game card_key (the card number, e.g. BT1-025, one card in English and Japanese), print_id (the official printing, e.g. BT1-025_P1), name_en, type, level, colors, set.code, variant (Alternative Art, or パラレル on a Japanese parallel), parallel_index, finishes, print_unconfirmed, number_unconfirmed (card_id is dg-<print_id> for an English printing, dg-ja-<print_id> for a Japanese one and dg-c-<number> while the printing is open: then there is no price and the alternatives are the printings, each priced; no foil, and Japanese cards have a Cardmarket price but no TCGplayer price); football season, subset, teams, rookie, card_type, sure, score, parallel, box (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -1066,6 +1147,7 @@
               "yugioh",
               "magic",
               "star_wars_unlimited",
+              "digimon",
               "football"
             ],
             "description": "Present for every game except Pokémon."
@@ -1172,7 +1254,7 @@
                     "string",
                     "null"
                   ],
-                  "description": "The alternative's card id (Pokémon, Lorcana, Magic, Star Wars: Unlimited). Send it to /cardsApi/corrections to pick this alternative."
+                  "description": "The alternative's card id (Pokémon, Lorcana, Magic, Star Wars: Unlimited, Digimon). Send it to /cardsApi/corrections to pick this alternative."
                 },
                 "cardmarket_id": {
                   "type": [
@@ -1283,6 +1365,27 @@
                   "null"
                 ],
                 "description": "The copy's own number (12 of 12/50) where it was read on the card and fits the picked print run. A reading: check it on the card."
+              }
+            }
+          },
+          "box": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Football only: where this card is on the photo, as shares of the photo (0 to 1): x and y are the centre, width and height the size. null when the photo held one card.",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
               }
             }
           },
@@ -1559,7 +1662,7 @@
               "ko",
               "zh"
             ],
-            "description": "Default: the detected card's language. Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es."
+            "description": "Default: the detected card's language. Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es, Digimon en/ja."
           },
           "tcg": {
             "type": "string",
@@ -1569,7 +1672,8 @@
               "lorcana",
               "yugioh",
               "magic",
-              "star_wars_unlimited"
+              "star_wars_unlimited",
+              "digimon"
             ],
             "description": "Default: the detected card's game."
           },
@@ -1650,7 +1754,7 @@
           },
           "card_id": {
             "type": "string",
-            "description": "card_id of a search result or an alternative. Yu-Gi-Oh!: the passcode; Magic: the oracle_id when the printing is open; SWU: a printing id or the card_key."
+            "description": "card_id of a search result or an alternative. Yu-Gi-Oh!: the passcode; Magic: the oracle_id when the printing is open; SWU: a printing id or the card_key; Digimon: a printing id (dg-...) or dg-c-<number>."
           },
           "language": {
             "type": "string",
@@ -1716,6 +1820,7 @@
               "yugioh",
               "magic",
               "star_wars_unlimited",
+              "digimon",
               "football"
             ],
             "description": "The game to search. football: text search only (the player, optionally with set or season words), no language, no prices; each result carries a ref for the lookup."
@@ -1723,11 +1828,11 @@
           "q": {
             "type": "string",
             "maxLength": 80,
-            "description": "Card name, optionally with the number (\"charizard 4/102\"). At least 3 letters (2 CJK characters). Send q, or set and number."
+            "description": "Card name, optionally with the number (\"charizard 4/102\"). At least 3 letters (2 CJK characters). Send q, or set and number. Digimon: a card number alone (BT1-025, ST1-03, P-001, BT1-025_P1 for a printing) is a query."
           },
           "set": {
             "type": "string",
-            "description": "Set id, e.g. \"base1\". Only together with number."
+            "description": "Set id, e.g. \"base1\" (Digimon: the set code, e.g. \"BT1\" with number \"025\"). Only together with number."
           },
           "number": {
             "type": "string",
@@ -1746,7 +1851,7 @@
               "ko",
               "zh"
             ],
-            "description": "Default: en (Pokémon, One Piece, Lorcana, Yu-Gi-Oh!, Magic, SWU). Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es. Football cards have no language: leave it out."
+            "description": "Default: en (Pokémon, One Piece, Lorcana, Yu-Gi-Oh!, Magic, SWU, Digimon). Per game: Pokémon en/de/fr/es/it/ja/ko/zh, One Piece en/ja, Lorcana en/de/fr/it, Yu-Gi-Oh! en/de/fr/it/es/pt, Magic and SWU en/de/fr/it/es, Digimon en/ja. Football cards have no language: leave it out."
           },
           "limit": {
             "type": "integer",
