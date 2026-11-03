@@ -6,7 +6,7 @@ import { cardImages, MAX_IMAGES } from "./cardImages.js";
 import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
 import { InputError, normalizeBase64Image, parseAllowedDirs, readImageFile, validateImageUrl } from "./images.js";
 import { summarize } from "./summary.js";
-import { csvRows, listImages, stamp, toCsv, writeNew } from "./folder.js";
+import { csvRows, listImages, resolveFolder, stamp, toCsv, writeNew } from "./folder.js";
 
 export interface ServerOptions {
   env?: NodeJS.ProcessEnv;
@@ -46,6 +46,15 @@ const GET_DESCRIPTION = [
   "For a wrong detection use search_cards with request_id and correct_card instead: those are free.",
   "Football: pass the ref of a search_cards result (same API key, within 24 hours); the card then comes with all parallels of its subset and their print runs. Without a valid ref the call is refused and free.",
 ].join(" ");
+
+const EXPORT_DESCRIPTION = [
+  "Export the cards of up to 20 detections (request_id of recognize_cards or recognize_folder, within 48 hours) as the same custom CSV or JSON file the NeoSatoshi website exports, built by the website's own export code: your account's condition for new cards, corrections made with correct_card, your saved export presets.",
+  "Default: the recommended CSV columns. preset: a saved preset id from list_export_presets. Or format csv/json with fields (field ids from list_export_presets); json_mode \"api\" gives the documented card shape, \"custom\" your fields.",
+  "Free (no credits). Needs your own API key (demo detections keep no cards) and exports enabled for the account. Football detections cannot be exported yet.",
+  "save_to_folder writes the file into a local folder (allowed by NEOSATOSHI_ALLOWED_DIRS, never overwrites); without it the file content comes back in the answer (up to 100 KB).",
+].join(" ");
+
+const EXPORT_INLINE_MAX_CHARS = 100_000;
 
 const LANGUAGE = z.string().optional().describe("Card language, e.g. en, de, fr, it, es, pt, ja, ko, zh (per game). Default: the detected card's language, else en. Leave it out for football.");
 
@@ -321,6 +330,74 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       ).toString();
       return callCards("GET", `/cards/${encodeURIComponent(args.tcg)}/${encodeURIComponent(args.card_id)}${qs ? `?${qs}` : ""}`);
     },
+  );
+
+  server.registerTool(
+    "export_cards",
+    {
+      title: "Export detected cards as CSV or JSON",
+      description: EXPORT_DESCRIPTION,
+      inputSchema: {
+        request_ids: z.array(z.string()).min(1).max(20).describe("request_id of each detection to export, in the order the rows should have."),
+        preset: z.string().optional().describe("Id of a saved export preset (list_export_presets). Not together with format, fields or json_mode."),
+        format: z.enum(["csv", "json"]).optional().describe("Default csv."),
+        fields: z.array(z.string()).max(100).optional().describe("Field ids in column order (list_export_presets). Default: the recommended columns."),
+        json_mode: z.enum(["api", "custom"]).optional().describe("JSON only: api = the documented card shape (fields ignored), custom = your fields. Default api."),
+        save_to_folder: z.string().optional().describe("Local folder to write the file into (~ is expanded). Existing files are never overwritten."),
+      },
+      annotations: { title: "Export cards", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async (args) => {
+      const { key } = resolveApiKey(env);
+      try {
+        // Checked before the call, so a refused folder costs no export.
+        const dir = args.save_to_folder ? await resolveFolder(args.save_to_folder, allowedDirs) : null;
+        const resp: Record<string, any> = await cardsApi(
+          "POST",
+          "/exports",
+          clean({ request_ids: args.request_ids, preset: args.preset, format: args.format, fields: args.fields, json_mode: args.json_mode }),
+          key,
+          opts.fetchImpl,
+        );
+        const content = typeof resp.content === "string" ? resp.content : "";
+        const meta = { ...resp };
+        delete meta.content;
+        const lines = [`${resp.row_count ?? 0} row(s), ${resp.format ?? "csv"}, ${resp.filename ?? ""}.`];
+        if (Array.isArray(resp.missing) && resp.missing.length) lines.push(`Not found: ${resp.missing.map((m: any) => `${m.request_id} (${m.reason})`).join(", ")}`);
+        if (Array.isArray(resp.skipped) && resp.skipped.length) lines.push(`Left out: ${resp.skipped.map((m: any) => `${m.request_id} card ${m.card_index} (${m.reason})`).join(", ")}`);
+        if (Array.isArray(resp.warnings) && resp.warnings.length) lines.push(`Check: ${resp.warnings.map((m: any) => `${m.request_id} card ${m.card_index} (${m.code})`).join(", ")}`);
+        if (Array.isArray(resp.dropped_fields) && resp.dropped_fields.length) lines.push(`Unknown fields ignored: ${resp.dropped_fields.join(", ")}`);
+        if (dir) {
+          const name = String(resp.filename || `neosatoshi-export.${resp.format === "json" ? "json" : "csv"}`);
+          const ext = resp.format === "json" ? ".json" : ".csv";
+          const base = path.basename(name, path.extname(name)).replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 80) || "neosatoshi-export";
+          const file = await writeNew(dir, base, ext, content);
+          lines.push(`Written: ${file}`);
+          return { content: [{ type: "text" as const, text: lines.join("\n") }], structuredContent: { ...meta, file_written: file } };
+        }
+        if (content.length > EXPORT_INLINE_MAX_CHARS) {
+          return errorResult(`${lines[0]} The file is ${content.length} characters, too large to return here: call export_cards again with save_to_folder. Nothing was charged.`);
+        }
+        return {
+          content: [{ type: "text" as const, text: `${lines.join("\n")}\n\n${content}` }],
+          structuredContent: { ...meta, content },
+        };
+      } catch (err) {
+        if (err instanceof InputError || err instanceof ApiError) return errorResult(scrub(err.message, key));
+        return errorResult(scrub(`Unexpected error: ${(err as Error)?.message ?? String(err)}`, key));
+      }
+    },
+  );
+
+  server.registerTool(
+    "list_export_presets",
+    {
+      title: "List export presets and fields",
+      description: "Lists the account's saved export presets (from the NeoSatoshi website, plus the built-in recommended CSV) and every field id export_cards takes. Free. Needs your own API key.",
+      inputSchema: {},
+      annotations: { title: "List export presets", readOnlyHint: true, openWorldHint: true },
+    },
+    async () => callCards("GET", "/exports/presets"),
   );
 
   server.registerTool(

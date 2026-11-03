@@ -37,7 +37,8 @@ async function connect(env, fetchImpl) {
 test("lists all tools", async () => {
   const client = await connect({}, fakeFetch(200, sample, []));
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["correct_card", "get_card", "list_supported_games", "recognize_cards", "recognize_folder", "search_cards"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["correct_card", "export_cards", "get_card", "list_export_presets", "list_supported_games", "recognize_cards", "recognize_folder", "search_cards"]);
+  assert.match(tools.find((t) => t.name === "export_cards").description, /Free/);
   assert.match(tools.find((t) => t.name === "search_cards").description, /free/);
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
@@ -296,4 +297,66 @@ test("recognize_folder stops on out_of_credits and respects the allowlist", asyn
   assert.match(r2.content[0].text, /NEOSATOSHI_ALLOWED_DIRS/);
   fs.rmSync(folder, { recursive: true, force: true });
   fs.rmSync(other, { recursive: true, force: true });
+});
+
+const EXPORT_RESP = {
+  filename: "neosatoshi-pokemon-export-2026-11-03.csv", content_type: "text/csv", format: "csv", row_count: 2,
+  columns: ["Name", "SKU"], fields: ["name", "sku"], content: "\uFEFFName,SKU\r\nPikachu,BS58\r\nPikachu,BS58",
+  dropped_fields: [], skipped: [{ request_id: "req_b", card_index: 1, reason: "correction_not_kept" }], warnings: [],
+  missing: [{ request_id: "req_c", reason: "expired" }], generated_at: "2026-11-03T09:00:00.000Z", engine: { commit: "x", inputs: "y" },
+};
+
+test("export_cards: one POST /exports with the caller's choice, the file inline with what was left out", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x" }, fakeFetch(200, EXPORT_RESP, calls));
+  const res = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a", "req_c"], fields: ["name", "sku"] } });
+  assert.equal(res.isError, undefined);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, `${CARDS_API_BASE}/exports`);
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), { request_ids: ["req_a", "req_c"], fields: ["name", "sku"] });
+  const text = res.content[0].text;
+  assert.match(text, /2 row\(s\), csv/);
+  assert.match(text, /req_c \(expired\)/);
+  assert.match(text, /req_b card 1 \(correction_not_kept\)/);
+  assert.match(text, /Pikachu,BS58/);
+  assert.equal(res.structuredContent.row_count, 2);
+});
+
+test("export_cards save_to_folder: a new file in an allowed folder, never overwritten; a refused folder makes no call", async () => {
+  const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-export-")));
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x", NEOSATOSHI_ALLOWED_DIRS: folder }, fakeFetch(200, EXPORT_RESP, calls));
+  const a = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], save_to_folder: folder } });
+  const b = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], save_to_folder: folder } });
+  assert.equal(a.isError, undefined);
+  assert.deepEqual(fs.readdirSync(folder).sort(), ["neosatoshi-pokemon-export-2026-11-03-2.csv", "neosatoshi-pokemon-export-2026-11-03.csv"]);
+  assert.equal(fs.readFileSync(path.join(folder, "neosatoshi-pokemon-export-2026-11-03.csv"), "utf8"), EXPORT_RESP.content);
+  assert.equal(a.content[0].text.includes("Pikachu,BS58"), false, "the file is written, not repeated in the answer");
+  assert.match(b.structuredContent.file_written, /-2\.csv$/);
+  const before = calls.length;
+  const refused = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"], save_to_folder: os.tmpdir() } });
+  assert.equal(refused.isError, true);
+  assert.equal(calls.length, before);
+  fs.rmSync(folder, { recursive: true, force: true });
+});
+
+test("export_cards: an API refusal is a tool error, a large file asks for save_to_folder", async () => {
+  let client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x" }, fakeFetch(403, { error: "exports_need_own_key", message: "Exports need your own API key: demo detections keep no cards." }, []));
+  let res = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"] } });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /own API key/);
+  client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x" }, fakeFetch(200, { ...EXPORT_RESP, content: "x".repeat(100_001) }, []));
+  res = await client.callTool({ name: "export_cards", arguments: { request_ids: ["req_a"] } });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /save_to_folder/);
+});
+
+test("list_export_presets: GET /exports/presets", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "nsk_live_x" }, fakeFetch(200, { presets: [{ id: "recommended-csv" }], fields: [] }, calls));
+  const res = await client.callTool({ name: "list_export_presets", arguments: {} });
+  assert.equal(res.isError, undefined);
+  assert.equal(calls[0].url, `${CARDS_API_BASE}/exports/presets`);
+  assert.equal(calls[0].init.method, "GET");
 });

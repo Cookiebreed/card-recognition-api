@@ -15,8 +15,8 @@ export const CSV_COLUMNS = [
   "parallel", "request_id",
 ] as const;
 
-/** The folder's real path and its image files (sorted by name), after the allowlist check. */
-export async function listImages(folder: string, allowedDirs: string[] | null): Promise<{ dir: string; files: string[] }> {
+/** The folder's real path, after the same NEOSATOSHI_ALLOWED_DIRS check as image_path. */
+export async function resolveFolder(folder: string, allowedDirs: string[] | null): Promise<string> {
   if (typeof folder !== "string" || folder.trim() === "" || folder.includes("\0")) throw new InputError("folder is empty or invalid.");
   const requested = path.resolve(expandHome(folder.trim()));
   let dir: string;
@@ -32,6 +32,12 @@ export async function listImages(folder: string, allowedDirs: string[] | null): 
       throw new InputError(`Refused: ${requested} is outside the directories allowed by NEOSATOSHI_ALLOWED_DIRS.`);
     }
   }
+  return dir;
+}
+
+/** The folder's real path and its image files (sorted by name), after the allowlist check. */
+export async function listImages(folder: string, allowedDirs: string[] | null): Promise<{ dir: string; files: string[] }> {
+  const dir = await resolveFolder(folder, allowedDirs);
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = entries
     .filter((e) => (e.isFile() || e.isSymbolicLink()) && IMAGE_EXT.has(path.extname(e.name).toLowerCase()) && !e.name.startsWith("."))
