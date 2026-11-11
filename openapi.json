@@ -1351,7 +1351,7 @@
             }
           },
           "400": {
-            "description": "invalid_json, invalid_card_index, invalid_card_id, invalid_query (for example reverse_holo for a game other than Pokémon), unsupported_language, unsupported_tcg, unsupported_cardmarket_id (Pokémon: the cardmarket_id is not the card's own, its 1st Edition product or one of its possible_variants), correction_not_available_for_tcg (football). Fix the request; do not retry.",
+            "description": "invalid_json, invalid_card_index, invalid_card_id, invalid_query (for example reverse_holo for a game other than Pokémon), unsupported_language, unsupported_tcg, unsupported_cardmarket_id (Pokémon: the cardmarket_id is not the card's own, its 1st Edition product or one of its possible_variants; One Piece: none of the card's printings; other games: not the product of the card answered, pick their printing by card_id or set + number), correction_not_available_for_tcg (football). Fix the request; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1495,7 +1495,7 @@
               "type": "integer",
               "minimum": 1
             },
-            "description": "Pokémon: picks a version, the card's own cardmarket_id, its 1st Edition product or a possible_variants[].cardmarket_id of that card; the answer has price_basis special_variant and that version's price. Any other id: 400 unsupported_cardmarket_id. One Piece: picks a parallel."
+            "description": "Pokémon: picks a version, the card's own cardmarket_id, its 1st Edition product or a possible_variants[].cardmarket_id of that card; the answer has price_basis special_variant and that version's price. Any other id: 400 unsupported_cardmarket_id. One Piece: picks a parallel (an id of none of its printings: 400). Lorcana, Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon: these games pick a printing by card_id or set + number; a cardmarket_id that is not the product of the card answered is 400 unsupported_cardmarket_id."
           },
           {
             "name": "reverse_holo",
@@ -1752,7 +1752,7 @@
             }
           },
           "400": {
-            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, unsupported_cardmarket_id (Pokémon: not a version of this card), invalid_idempotency_key, ref_required, ref_invalid, ref_expired (football). Nothing charged; do not retry.",
+            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, unsupported_cardmarket_id (not a version or not the product of this card), invalid_idempotency_key, ref_required, ref_invalid, ref_expired (football). Nothing charged; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
