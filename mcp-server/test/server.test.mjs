@@ -145,6 +145,10 @@ test("correct_card posts the correction, get_card reads one card with its query"
   assert.equal(calls[1].url, `${CARDS_API_BASE}/cards/magic/o-1?set=lea&number=161`);
   assert.equal(calls[1].init.method, "GET");
   assert.equal(calls[1].init.body, undefined);
+  await client.callTool({ name: "correct_card", arguments: { request_id: "req_abc12345", card_index: 0, card_id: "swsh12-189", cardmarket_id: 806514, reverse_holo: false } });
+  assert.deepEqual(JSON.parse(calls[2].init.body), { request_id: "req_abc12345", card_index: 0, card_id: "swsh12-189", cardmarket_id: 806514, reverse_holo: false });
+  await client.callTool({ name: "get_card", arguments: { tcg: "pokemon", card_id: "swsh12-189", cardmarket_id: 806514, reverse_holo: true } });
+  assert.equal(calls[3].url, `${CARDS_API_BASE}/cards/pokemon/swsh12-189?cardmarket_id=806514&reverse_holo=true`);
 });
 
 test("cards API errors come back as tool errors without the key", async () => {

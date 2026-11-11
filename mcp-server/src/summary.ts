@@ -11,6 +11,36 @@ function fmtRun(run: unknown): string {
   return typeof run === "number" ? ` /${run}` : "";
 }
 
+/** "1. " plus the card_index that search_cards and correct_card need (older responses lack it). */
+function lead(card: Obj, index: number): string {
+  return `${index + 1}. ${typeof card.card_index === "number" ? `(card_index ${card.card_index}) ` : ""}`;
+}
+
+const PRICE_BASIS: Record<string, string> = { reverse_holo: "reverse holo", first_edition: "1st Edition" };
+
+/** What prices.cardmarket describes when it is not the plain card (Pokémon). */
+function priceBasis(card: Obj): string | null {
+  const b = card.price_basis;
+  if (typeof b !== "string" || !b || b === "normal") return null;
+  if (b === "special_variant") return `${typeof card.special_variant === "string" && card.special_variant ? card.special_variant : "special version"} price`;
+  return `${PRICE_BASIS[b] ?? b.replace(/_/g, " ")} price`;
+}
+
+/** The review hint: its reasons, plus how to fix the card when it can be corrected. */
+function review(card: Obj, requestId: string | null, shown: string[] = []): string | null {
+  const r: Obj | null | undefined = card.review;
+  if (!r || typeof r !== "object" || r.needed !== true) return null;
+  const reasons = (Array.isArray(r.reasons) ? r.reasons : []).filter((x: unknown): x is string => typeof x === "string" && !shown.includes(x));
+  let text = `review needed${reasons.length ? `: ${reasons.map((x) => x.replace(/_/g, " ")).join(", ")}` : ""}`;
+  const s: Obj | null | undefined = r.search;
+  if (s && typeof s === "object" && typeof s.card_index === "number") {
+    const args = [`request_id ${requestId ?? "of this detection"}`, `card_index ${s.card_index}`];
+    if (typeof s.q === "string" && s.q) args.push(`q "${s.q}"`);
+    text += `; to fix: search_cards with ${args.join(", ")} (free) or an alternative whose set number matches the photo, then correct_card`;
+  }
+  return text;
+}
+
 function graded(card: Obj): string | null {
   const g: Obj | null | undefined = card.graded;
   if (!g || typeof g !== "object") return null;
@@ -18,9 +48,9 @@ function graded(card: Obj): string | null {
 }
 
 /** Football cards: player, release, parallel; no Cardmarket id and no prices. */
-function summarizeFootball(card: Obj, index: number): string {
+function summarizeFootball(card: Obj, index: number, requestId: string | null): string {
   const set: Obj = card.set ?? {};
-  const parts: string[] = [`${index + 1}. ${card.name ?? "(unknown)"}`];
+  const parts: string[] = [`${lead(card, index)}${card.name ?? "(unknown)"}`];
   if (set.name || set.number) parts.push(`${set.name ?? "set ?"}${set.number ? ` #${set.number}` : ""}`);
   if (card.subset) parts.push(card.subset);
   if (Array.isArray(card.teams) && card.teams.length) parts.push(card.teams.join(", "));
@@ -37,16 +67,18 @@ function summarizeFootball(card: Obj, index: number): string {
   if (card.sure === false) parts.push("not sure, check the alternatives");
   if (Array.isArray(card.alternatives) && card.alternatives.length) parts.push(`${card.alternatives.length} alternatives`);
   parts.push("no price yet");
+  const rv = review(card, requestId, card.sure === false ? ["not_sure"] : []);
+  if (rv) parts.push(rv);
   return parts.join(" | ");
 }
 
-export function summarizeCard(card: Obj, index: number): string {
-  if (card.tcg === "football") return summarizeFootball(card, index);
+export function summarizeCard(card: Obj, index: number, requestId: string | null = null): string {
+  if (card.tcg === "football") return summarizeFootball(card, index, requestId);
   const name = card.full_name ?? card.name ?? "(unknown)";
   const set: Obj = card.set ?? {};
   const setCode = set.ptcgo_code ?? set.code;
   const setPart = [set.name, setCode && setCode !== set.name ? `(${setCode})` : null].filter(Boolean).join(" ");
-  const parts: string[] = [`${index + 1}. ${name}`];
+  const parts: string[] = [`${lead(card, index)}${name}`];
   if (card.name_en && card.name_en !== card.name) parts.push(`EN name ${card.full_name_en ?? card.name_en}`);
   if (setPart || set.number) parts.push(`${setPart || "set ?"}${set.number ? ` #${set.number}` : ""}`);
   if (card.card_id && card.tcg === "onepiece") parts.push(card.card_id);
@@ -57,10 +89,13 @@ export function summarizeCard(card: Obj, index: number): string {
   if (card.edition && card.edition !== "unlimited") parts.push(card.edition);
   if (card.first_edition) parts.push("1st edition");
   if (card.reverse_holo) parts.push("reverse holo");
+  if (typeof card.special_variant === "string" && card.special_variant) parts.push(card.special_variant);
   if (card.is_foil) parts.push("foil");
   parts.push(`Cardmarket ${card.cardmarket_id ?? "n/a"}`);
   const trend = fmtPrice(card.prices?.cardmarket);
-  if (trend) parts.push(`trend ${trend}`);
+  const basis = priceBasis(card);
+  if (trend) parts.push(`trend ${trend}${basis ? ` (${basis})` : ""}`);
+  else if (basis) parts.push(`no ${basis} on Cardmarket`);
   const foilTrend = fmtPrice(card.prices?.cardmarket_foil);
   if (foilTrend) parts.push(`foil trend ${foilTrend}`);
   const tcgp = fmtPrice(card.prices?.tcgplayer, "market");
@@ -74,13 +109,16 @@ export function summarizeCard(card: Obj, index: number): string {
   if (Array.isArray(card.alternatives) && card.alternatives.length) {
     parts.push(`${card.alternatives.length} alternatives`);
   }
+  const rv = review(card, requestId, [...unsure, ...(card.image_quality?.blurred ? ["blurred"] : [])]);
+  if (rv) parts.push(rv);
   return parts.join(" | ");
 }
 
 export function summarize(resp: Obj): string {
   const cards: Obj[] = Array.isArray(resp.cards) ? resp.cards : [];
   const lines = [`Detected ${resp.count ?? cards.length} card(s). request_id ${resp.request_id ?? "n/a"}`];
-  cards.forEach((c, i) => lines.push(summarizeCard(c, i)));
+  const fixId = resp.correction?.request_id ?? resp.request_id;
+  cards.forEach((c, i) => lines.push(summarizeCard(c, i, typeof fixId === "string" ? fixId : null)));
   if (resp.demo && typeof resp.demo === "object") {
     lines.push(`Demo key: ${resp.demo.remaining_today} of ${resp.demo.limit_per_day} detections left today on this network.`);
   } else if (resp.credits && typeof resp.credits.remaining === "number") {

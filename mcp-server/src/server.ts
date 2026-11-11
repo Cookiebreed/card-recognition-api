@@ -39,7 +39,7 @@ const SEARCH_DESCRIPTION = [
 const CORRECT_DESCRIPTION = [
   "Correct a card of a detection to the right catalog card. Free, within 24 hours of the detection, 3 times per card, only for the API key that made the detection.",
   "card_id comes from a correction search result or from the detected card's alternatives. Returns the full corrected card. Corrections also improve the recognition.",
-  "Yu-Gi-Oh!: card_id is the passcode, set the printed code (LOB-EN001) to pick a printing. Magic: card_id is the oracle_id with set + number for the printing. One Piece: cardmarket_id picks a parallel. Digimon: card_id is a printing id (dg-BT1-025_P1, dg-ja-BT1-025_P1) or dg-c-<number> while the printing is open.",
+  "Yu-Gi-Oh!: card_id is the passcode, set the printed code (LOB-EN001) to pick a printing. Magic: card_id is the oracle_id with set + number for the printing. One Piece: cardmarket_id picks a parallel. Pokémon: cardmarket_id of one of the card's possible_variants picks that special version (its price comes back), reverse_holo says whether the copy is a reverse holo. Digimon: card_id is a printing id (dg-BT1-025_P1, dg-ja-BT1-025_P1) or dg-c-<number> while the printing is open.",
 ].join(" ");
 
 const GET_DESCRIPTION = [
@@ -301,7 +301,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         card_index: z.number().int().min(0).describe("cards[].card_index of the card to correct."),
         card_id: z.string().describe("card_id of a search result or an alternative."),
         language: LANGUAGE,
-        cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing."),
+        cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing. Pokémon: a possible_variants cardmarket_id of that card picks the special version (any other id: 400 unsupported_cardmarket_id)."),
+        reverse_holo: z.boolean().optional().describe("Pokémon only: the copy is (true) or is not (false) a reverse holo. Default: as detected."),
         set: z.string().optional().describe("Magic, SWU: set of the printing; Yu-Gi-Oh!: the printed code."),
         number: z.string().optional().describe("Magic, SWU: collector number of the printing."),
       },
@@ -320,7 +321,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key; Digimon: dg-... printing id, dg-c-<number> or the bare number BT1-025; football: fb-...)."),
         ref: z.string().optional().describe("Football only, required there: the ref of the search_cards result for this card_id (valid 24 hours)."),
         language: LANGUAGE,
-        cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing."),
+        cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing. Pokémon: a possible_variants cardmarket_id of that card picks the special version (any other id: 400 unsupported_cardmarket_id)."),
+        reverse_holo: z.boolean().optional().describe("Pokémon only: true returns the reverse holo price."),
         set: z.string().optional().describe("Magic, SWU: set of the printing; Yu-Gi-Oh!: the printed code."),
         number: z.string().optional().describe("Magic, SWU: collector number of the printing."),
       },
@@ -328,7 +330,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
     },
     async (args) => {
       const qs = new URLSearchParams(
-        clean({ language: args.language, cardmarket_id: args.cardmarket_id?.toString(), set: args.set, number: args.number, ref: args.ref }) as Record<string, string>,
+        clean({ language: args.language, cardmarket_id: args.cardmarket_id?.toString(), reverse_holo: args.reverse_holo?.toString(), set: args.set, number: args.number, ref: args.ref }) as Record<string, string>,
       ).toString();
       return callCards("GET", `/cards/${encodeURIComponent(args.tcg)}/${encodeURIComponent(args.card_id)}${qs ? `?${qs}` : ""}`);
     },
