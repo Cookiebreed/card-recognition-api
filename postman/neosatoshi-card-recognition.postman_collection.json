@@ -743,7 +743,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"request_id\": \"req_...\",\n  \"card_index\": 0,\n  \"q\": \"charizard\"\n}",
+              "raw": "{\n  \"request_id\": \"req_...\",\n  \"card_index\": 0,\n  \"tcg\": \"pokemon\",\n  \"q\": \"charizard\",\n  \"number\": \"4\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -760,7 +760,7 @@
                 "search"
               ]
             },
-            "description": "Within 24 hours of the detection, 5 searches per detected card, at most 5 results. Then POST /cardsApi/corrections."
+            "description": "Within 24 hours of the detection, 5 searches per detected card (500 per account per day), at most 5 results. The quickest body is the card's review.search plus the detection's correction.request_id; add number when you read it on the card. Then POST /cardsApi/corrections."
           }
         },
         {
@@ -792,7 +792,7 @@
                 "corrections"
               ]
             },
-            "description": "card_id from a correction search result or the card alternatives. 3 corrections per card."
+            "description": "card_id from a correction search result or the card alternatives (take an alternative only when its set number matches the card, never by score). 3 corrections per card, 1000 per account per day. Pokémon: add \"cardmarket_id\" (a possible_variants cardmarket_id of that card, else 400 unsupported_cardmarket_id) to pick a version, or \"reverse_holo\": true for a reverse holo copy; prices.cardmarket then is that version's price (price_basis)."
           }
         }
       ]

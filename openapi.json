@@ -2,15 +2,15 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.14.0",
+    "version": "1.15.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes several cards per photo (binder pages work, best up to about 20 cards) in Pokémon (English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish), Digimon Card Game (English, Japanese) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). Several cards per photo work for football cards too: each card comes back as its own entry with its box on the photo, and a photo with a card back is never split. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance, one credit per detected card. Requests that detect no card are not charged.\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all seven trading card games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes several cards per photo (binder pages work, best up to about 20 cards) in Pokémon (English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish), Digimon Card Game (English, Japanese) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). Several cards per photo work for football cards too: each card comes back as its own entry with its box on the photo, and a photo with a card back is never split. A photo of a PSA, BGS or CGC slab (for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance: one card scan per detected card, also when the card is a low-confidence best guess. Not charged: card backs, images without a card and cards whose picture does not look like the matched card (review reason visual_mismatch).\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for all seven trading card games and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free.\n\nIntegration in short (bulk loop): detect, then for each card in cards[]: if review.needed is false, accept it. Otherwise read the set number on the photo (or ask a person), run the free correction search (POST /cardsApi/search with {\"request_id\": correction.request_id, ...card.review.search}) or pick an alternative whose set number matches, then POST /cardsApi/corrections with request_id, card_index and card_id. confidence is a fixed step per match method (Pokémon 0.99, 0.95, 0.90, 0.85, 0.80, 0.59 best guess), not a probability; alternatives[].score is a similarity on a different scale: never pick an alternative by score alone. Pokémon prices.cardmarket is the price of the version the card is (price_basis says which: normal, reverse_holo, first_edition or special_variant); prices.cardmarket_normal and prices.cardmarket_reverse hold the plain and reverse holo families. Pick a special version with a possible_variants[].cardmarket_id in the correction, set reverse_holo there for a reverse holo copy. Retry 429 after Retry-After and 502/503 with backoff, never other 4xx. A detect retry is a new, charged detection; paid search and lookup accept an Idempotency-Key header.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
       "url": "https://neosatoshi.com/developers/detection-api"
     },
-    "termsOfService": "https://neosatoshi.com/termsofuse"
+    "termsOfService": "https://neosatoshi.com/termsofuse#api-terms"
   },
   "externalDocs": {
     "description": "Documentation, live examples and a test box",
@@ -31,7 +31,7 @@
       "post": {
         "operationId": "detectCards",
         "summary": "Detect the trading cards in one image",
-        "description": "Pokémon is the default. Send \"tcg\" for the other games. Every confidently detected card comes back in `cards`, each with alternatives for a manual pick.",
+        "description": "Pokémon is the default. Send \"tcg\" for the other games. Every detected card comes back in `cards` with its card_id, card_index, a review hint and alternatives. Accept a card when review.needed is false; otherwise check it and correct it for free with the endpoints in `correction` (search_endpoint first, then endpoint). One card scan per detected card, also at confidence 0.59; card backs, images without a card and cards with review reason visual_mismatch are not charged. A retry of this call is a new, charged detection.",
         "requestBody": {
           "required": true,
           "content": {
@@ -114,55 +114,478 @@
                 "schema": {
                   "$ref": "#/components/schemas/DetectResponse"
                 },
-                "example": {
-                  "request_id": "req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5",
-                  "count": 1,
-                  "cards": [
-                    {
-                      "name": "Cinderace ex",
-                      "language": "en",
-                      "set": {
-                        "id": "svp",
-                        "ptcgo_code": "PR-SV",
-                        "name": "Scarlet & Violet Black Star Promos",
-                        "number": "163"
-                      },
-                      "rarity": "Promo",
-                      "cardmarket_id": 796939,
-                      "reverse_holo": false,
-                      "first_edition": false,
-                      "prices": {
-                        "cardmarket": {
-                          "trend": 3.59,
-                          "low": 1,
-                          "avg7": 3.71,
-                          "avg30": 4.1,
-                          "currency": "EUR"
-                        }
-                      },
-                      "images": {
-                        "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
-                        "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
-                      },
-                      "confidence": 0.85,
-                      "graded": null,
-                      "image_quality": {
-                        "blurred": false,
-                        "unusual_dimensions": false
-                      },
-                      "alternatives": [
+                "examples": {
+                  "pokemon_single": {
+                    "summary": "Pokémon, one card, demo key (accept: review.needed false)",
+                    "value": {
+                      "request_id": "req_745cfd72-7f1c-4e4c-94d3-91e2485b8b2d",
+                      "count": 1,
+                      "cards": [
                         {
                           "name": "Cinderace ex",
-                          "set": "Stellar Crown",
-                          "number": "28",
-                          "score": 1
+                          "name_ja": null,
+                          "name_ko": null,
+                          "name_zh": null,
+                          "language": "en",
+                          "card_id": "svp-163",
+                          "set": {
+                            "id": "svp",
+                            "ptcgo_code": "PR-SV",
+                            "name": "Scarlet & Violet Black Star Promos",
+                            "number": "163"
+                          },
+                          "rarity": "Promo",
+                          "cardmarket_id": 796939,
+                          "reverse_holo": false,
+                          "first_edition": false,
+                          "possible_variants": null,
+                          "special_variant": null,
+                          "is_energy_card": false,
+                          "is_card_back": false,
+                          "price_basis": "normal",
+                          "prices": {
+                            "cardmarket": {
+                              "trend": 3.84,
+                              "low": 1,
+                              "avg7": 3.87,
+                              "avg30": 3.87,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_normal": {
+                              "trend": 3.84,
+                              "low": 1,
+                              "avg7": 3.87,
+                              "avg30": 3.87,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_reverse": {
+                              "trend": null,
+                              "low": null,
+                              "avg7": null,
+                              "avg30": null,
+                              "currency": "EUR"
+                            },
+                            "tcgplayer": {
+                              "market": 5.03,
+                              "currency": "USD"
+                            }
+                          },
+                          "images": {
+                            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
+                            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
+                          },
+                          "confidence": 0.85,
+                          "image_quality": {
+                            "blurred": false,
+                            "unusual_dimensions": false
+                          },
+                          "alternatives": [
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Stellar Crown",
+                              "number": "28",
+                              "score": 1,
+                              "possible_variants": null,
+                              "card_id": "sv7-28",
+                              "cardmarket_id": 785881
+                            },
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Ascended Heroes",
+                              "number": "38",
+                              "score": 0.93,
+                              "possible_variants": null,
+                              "card_id": "me2pt5-38",
+                              "cardmarket_id": 869649
+                            },
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Stellar Crown",
+                              "number": "157",
+                              "score": 0.89,
+                              "possible_variants": null,
+                              "card_id": "sv7-157",
+                              "cardmarket_id": 786011
+                            }
+                          ],
+                          "graded": null,
+                          "card_index": 0,
+                          "review": {
+                            "needed": false,
+                            "reasons": [],
+                            "search": null
+                          }
                         }
-                      ]
+                      ],
+                      "demo": {
+                        "limit_per_day": 10,
+                        "remaining_today": 9
+                      },
+                      "correction": {
+                        "request_id": "req_745cfd72-7f1c-4e4c-94d3-91e2485b8b2d",
+                        "until": "2026-11-12T17:52:33.487Z",
+                        "endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/corrections",
+                        "search_endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search"
+                      }
                     }
-                  ],
-                  "demo": {
-                    "limit_per_day": 10,
-                    "remaining_today": 9
+                  },
+                  "pokemon_needs_review": {
+                    "summary": "Pokémon, two cards: the second is a 0.59 best guess with review.search",
+                    "value": {
+                      "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                      "count": 2,
+                      "cards": [
+                        {
+                          "name": "Cinderace ex",
+                          "name_ja": null,
+                          "name_ko": null,
+                          "name_zh": null,
+                          "language": "en",
+                          "card_id": "svp-163",
+                          "set": {
+                            "id": "svp",
+                            "ptcgo_code": "PR-SV",
+                            "name": "Scarlet & Violet Black Star Promos",
+                            "number": "163"
+                          },
+                          "rarity": "Promo",
+                          "cardmarket_id": 796939,
+                          "reverse_holo": false,
+                          "first_edition": false,
+                          "possible_variants": null,
+                          "special_variant": null,
+                          "is_energy_card": false,
+                          "is_card_back": false,
+                          "price_basis": "normal",
+                          "prices": {
+                            "cardmarket": {
+                              "trend": 3.84,
+                              "low": 1,
+                              "avg7": 3.87,
+                              "avg30": 3.87,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_normal": {
+                              "trend": 3.84,
+                              "low": 1,
+                              "avg7": 3.87,
+                              "avg30": 3.87,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_reverse": {
+                              "trend": null,
+                              "low": null,
+                              "avg7": null,
+                              "avg30": null,
+                              "currency": "EUR"
+                            },
+                            "tcgplayer": {
+                              "market": 5.03,
+                              "currency": "USD"
+                            }
+                          },
+                          "images": {
+                            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
+                            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
+                          },
+                          "confidence": 0.85,
+                          "image_quality": {
+                            "blurred": false,
+                            "unusual_dimensions": false
+                          },
+                          "alternatives": [
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Stellar Crown",
+                              "number": "28",
+                              "score": 1,
+                              "possible_variants": null,
+                              "card_id": "sv7-28",
+                              "cardmarket_id": 785881
+                            },
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Ascended Heroes",
+                              "number": "38",
+                              "score": 0.93,
+                              "possible_variants": null,
+                              "card_id": "me2pt5-38",
+                              "cardmarket_id": 869649
+                            },
+                            {
+                              "name": "Cinderace ex",
+                              "set": "Stellar Crown",
+                              "number": "157",
+                              "score": 0.89,
+                              "possible_variants": null,
+                              "card_id": "sv7-157",
+                              "cardmarket_id": 786011
+                            }
+                          ],
+                          "graded": null,
+                          "card_index": 0,
+                          "review": {
+                            "needed": false,
+                            "reasons": [],
+                            "search": null
+                          }
+                        },
+                        {
+                          "name": "Eevee",
+                          "name_ja": null,
+                          "name_ko": null,
+                          "name_zh": null,
+                          "language": "en",
+                          "card_id": "swshp-SWSH095",
+                          "set": {
+                            "id": "swshp",
+                            "ptcgo_code": "PR-SW",
+                            "name": "SWSH Black Star Promos",
+                            "number": "SWSH095"
+                          },
+                          "rarity": "Promo",
+                          "cardmarket_id": 547026,
+                          "reverse_holo": false,
+                          "first_edition": false,
+                          "possible_variants": null,
+                          "special_variant": null,
+                          "is_energy_card": false,
+                          "is_card_back": false,
+                          "price_basis": "normal",
+                          "prices": {
+                            "cardmarket": {
+                              "trend": 4.75,
+                              "low": 0.95,
+                              "avg7": 3.76,
+                              "avg30": 4.32,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_normal": {
+                              "trend": 4.75,
+                              "low": 0.95,
+                              "avg7": 3.76,
+                              "avg30": 4.32,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_reverse": {
+                              "trend": 1.4,
+                              "low": null,
+                              "avg7": 1.68,
+                              "avg30": 1.93,
+                              "currency": "EUR"
+                            },
+                            "tcgplayer": {
+                              "market": 4.07,
+                              "currency": "USD"
+                            }
+                          },
+                          "images": {
+                            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swshp/swshp-SWSH095_small.webp",
+                            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swshp/swshp-SWSH095.png"
+                          },
+                          "confidence": 0.59,
+                          "image_quality": {
+                            "blurred": false,
+                            "unusual_dimensions": false
+                          },
+                          "alternatives": [
+                            {
+                              "name": "Eevee",
+                              "set": "Vivid Voltage",
+                              "number": "130",
+                              "score": 0.77,
+                              "possible_variants": [
+                                {
+                                  "key": "reverse_holo",
+                                  "label": "Reverse Holo",
+                                  "special_variant": null,
+                                  "cardmarket_id": 512360
+                                }
+                              ],
+                              "card_id": "swsh4-130",
+                              "cardmarket_id": 512360
+                            },
+                            {
+                              "name": "Eevee",
+                              "set": "Shining Fates",
+                              "number": "52",
+                              "score": 0.67,
+                              "possible_variants": [
+                                {
+                                  "key": "reverse_holo",
+                                  "label": "Reverse Holo",
+                                  "special_variant": null,
+                                  "cardmarket_id": 539283
+                                }
+                              ],
+                              "card_id": "swsh45-52",
+                              "cardmarket_id": 539283
+                            },
+                            {
+                              "name": "Eevee",
+                              "set": "SWSH Black Star Promos",
+                              "number": "SWSH042",
+                              "score": 0.67,
+                              "possible_variants": null,
+                              "card_id": "swshp-SWSH042",
+                              "cardmarket_id": 491204
+                            }
+                          ],
+                          "graded": null,
+                          "card_index": 1,
+                          "review": {
+                            "needed": true,
+                            "reasons": [
+                              "low_confidence"
+                            ],
+                            "search": {
+                              "card_index": 1,
+                              "tcg": "pokemon",
+                              "q": "Eevee"
+                            }
+                          }
+                        }
+                      ],
+                      "credits": {
+                        "remaining": 1957
+                      },
+                      "correction": {
+                        "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                        "until": "2026-11-12T17:54:08.190Z",
+                        "endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/corrections",
+                        "search_endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search"
+                      }
+                    }
+                  },
+                  "pokemon_reverse_holo": {
+                    "summary": "Pokémon reverse holo: prices.cardmarket is the reverse price (Cardmarket figures of 2026-11-11; the TCGplayer reverse holo figure is illustrative)",
+                    "value": {
+                      "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                      "count": 1,
+                      "cards": [
+                        {
+                          "name": "Eevee",
+                          "name_ja": null,
+                          "name_ko": null,
+                          "name_zh": null,
+                          "language": "en",
+                          "card_id": "sv8pt5-74",
+                          "set": {
+                            "id": "sv8pt5",
+                            "ptcgo_code": "PRE",
+                            "name": "Prismatic Evolutions",
+                            "number": "74"
+                          },
+                          "rarity": "Common",
+                          "cardmarket_id": 805463,
+                          "reverse_holo": true,
+                          "first_edition": false,
+                          "possible_variants": [
+                            {
+                              "key": "reverse_holo",
+                              "label": "Reverse Holo",
+                              "special_variant": null,
+                              "cardmarket_id": 805463
+                            },
+                            {
+                              "key": "base",
+                              "label": "Base / Normal",
+                              "special_variant": null,
+                              "cardmarket_id": 805463
+                            },
+                            {
+                              "key": "pokeball",
+                              "label": "Poké Ball",
+                              "special_variant": "Pokeball",
+                              "cardmarket_id": 806514,
+                              "price": {
+                                "avg30": 1.1,
+                                "avg7": 1.1,
+                                "low": 0.25,
+                                "trend": 1.03,
+                                "lowPrice": 0.25,
+                                "trendPrice": 1.03,
+                                "idProduct": 806514,
+                                "updatedAt": "2026/11/11"
+                              }
+                            },
+                            {
+                              "key": "masterball",
+                              "label": "Master Ball",
+                              "special_variant": "Masterball",
+                              "cardmarket_id": 806515,
+                              "price": {
+                                "avg30": 9.23,
+                                "avg7": 10.15,
+                                "low": 2.49,
+                                "trend": 8.9,
+                                "lowPrice": 2.49,
+                                "trendPrice": 8.9,
+                                "idProduct": 806515,
+                                "updatedAt": "2026/11/11"
+                              }
+                            }
+                          ],
+                          "special_variant": null,
+                          "is_energy_card": false,
+                          "is_card_back": false,
+                          "price_basis": "reverse_holo",
+                          "prices": {
+                            "cardmarket": {
+                              "trend": 0.33,
+                              "low": 0.02,
+                              "avg7": 0.28,
+                              "avg30": 0.25,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_normal": {
+                              "trend": 0.08,
+                              "low": 0.02,
+                              "avg7": 0.08,
+                              "avg30": 0.07,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_reverse": {
+                              "trend": 0.33,
+                              "low": 0.02,
+                              "avg7": 0.28,
+                              "avg30": 0.25,
+                              "currency": "EUR"
+                            },
+                            "tcgplayer": {
+                              "market": 0.45,
+                              "currency": "USD"
+                            }
+                          },
+                          "images": {
+                            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74_small.webp",
+                            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74.png"
+                          },
+                          "confidence": 0.95,
+                          "image_quality": {
+                            "blurred": false,
+                            "unusual_dimensions": false
+                          },
+                          "alternatives": [],
+                          "graded": null,
+                          "review": {
+                            "needed": false,
+                            "reasons": [],
+                            "search": null
+                          },
+                          "card_index": 0
+                        }
+                      ],
+                      "credits": {
+                        "remaining": 1956
+                      },
+                      "correction": {
+                        "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                        "until": "2026-11-12T17:54:08.190Z",
+                        "endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/corrections",
+                        "search_endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search"
+                      }
+                    }
                   }
                 }
               },
@@ -171,7 +594,7 @@
                   "type": "string",
                   "description": "Server-Sent Events, each \"event: <name>\" plus one \"data: <JSON>\" line. Events in order: accepted (StreamAccepted), progress (StreamProgress, any number), card (StreamCard, one per card, index 0, 1, 2 and so on, in the order the cards finished, not left to right in the photo), then exactly one final event: done (DetectResponse, the same body as the JSON 200) or error (StreamError). A \": keep-alive\" comment comes every 15 seconds. Use the cards in done as the final result: their alternatives can be shorter than in the card event. Treat a repeated index as a replacement. No id and no retry fields: do not reconnect automatically, a new request is a new, charged detection. If the connection ends without a final event the outcome is unknown and cards may have been charged. Browsers: EventSource cannot POST, read the response with fetch."
                 },
-                "example": "event: accepted\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"tcg\":\"pokemon\"}\n\nevent: progress\ndata: {\"stage\":\"detecting\",\"elapsed_ms\":2140}\n\nevent: card\ndata: {\"index\":0,\"card\":{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939}}\n\n: keep-alive\n\nevent: progress\ndata: {\"stage\":\"finalizing\",\"elapsed_ms\":9870}\n\nevent: done\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"count\":1,\"cards\":[{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939}],\"credits\":{\"remaining\":1234}}\n\n"
+                "example": "event: accepted\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"tcg\":\"pokemon\"}\n\nevent: progress\ndata: {\"stage\":\"detecting\",\"elapsed_ms\":2140}\n\nevent: card\ndata: {\"index\":0,\"card\":{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939,\"card_index\":0,\"review\":{\"needed\":false,\"reasons\":[],\"search\":null}}}\n\n: keep-alive\n\nevent: progress\ndata: {\"stage\":\"finalizing\",\"elapsed_ms\":9870}\n\nevent: done\ndata: {\"request_id\":\"req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5\",\"count\":1,\"cards\":[{\"name\":\"Cinderace ex\",\"language\":\"en\",\"set\":{\"id\":\"svp\",\"ptcgo_code\":\"PR-SV\",\"name\":\"Scarlet & Violet Black Star Promos\",\"number\":\"163\"},\"cardmarket_id\":796939,\"card_index\":0,\"review\":{\"needed\":false,\"reasons\":[],\"search\":null}}],\"credits\":{\"remaining\":1234}}\n\n"
               }
             }
           },
@@ -226,7 +649,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network), or football_busy: the key already has 5 football photos in progress (Retry-After is set, nothing was charged).",
+            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network), or football_busy: the key already has 5 football photos in progress (Retry-After is set, nothing was charged). Wait for Retry-After; a retry is a new, charged detection.",
             "content": {
               "application/json": {
                 "schema": {
@@ -236,7 +659,7 @@
             }
           },
           "502": {
-            "description": "A backend step failed (credit_service_unavailable, upload_init_failed, upload_failed, detection_failed). Retry. Also when the detection pipeline failed before any card was processed.",
+            "description": "A backend step failed (credit_service_unavailable, upload_init_failed, upload_failed, detection_failed). Retry with backoff. Also when the detection pipeline failed before any card was processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -272,7 +695,7 @@
       "post": {
         "operationId": "searchCards",
         "summary": "Search the card catalog (paid), or search for the right card of a detection (free)",
-        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards. All seven trading card games in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad).",
+        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards; the quickest body is {\"request_id\": correction.request_id, ...cards[i].review.search}. All seven trading card games in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad). 30 requests per minute per key, shared by both modes. A German, French, Spanish or Italian Pokémon result has its name in the card's language.",
         "requestBody": {
           "required": true,
           "content": {
@@ -286,6 +709,27 @@
                     "$ref": "#/components/schemas/CorrectionSearchRequest"
                   }
                 ]
+              },
+              "examples": {
+                "correction_search": {
+                  "summary": "Free correction search from review.search, plus the number read on the photo",
+                  "value": {
+                    "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                    "card_index": 1,
+                    "tcg": "pokemon",
+                    "q": "Eevee",
+                    "number": "130"
+                  }
+                },
+                "card_search": {
+                  "summary": "Paid card search",
+                  "value": {
+                    "tcg": "pokemon",
+                    "q": "eevee",
+                    "set": "sv8pt5",
+                    "limit": 5
+                  }
+                }
               }
             }
           }
@@ -297,12 +741,105 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CardSearchResponse"
+                },
+                "examples": {
+                  "correction_search": {
+                    "summary": "Correction search answer (free)",
+                    "value": {
+                      "results": [
+                        {
+                          "name": "Eevee",
+                          "name_ja": null,
+                          "name_ko": null,
+                          "name_zh": null,
+                          "language": "en",
+                          "card_id": "swsh4-130",
+                          "set": {
+                            "id": "swsh4",
+                            "ptcgo_code": "VIV",
+                            "name": "Vivid Voltage",
+                            "number": "130"
+                          },
+                          "rarity": "Common",
+                          "cardmarket_id": 512360,
+                          "reverse_holo": false,
+                          "first_edition": false,
+                          "possible_variants": [
+                            {
+                              "key": "reverse_holo",
+                              "label": "Reverse Holo",
+                              "special_variant": null,
+                              "cardmarket_id": 512360
+                            }
+                          ],
+                          "special_variant": null,
+                          "is_energy_card": false,
+                          "is_card_back": false,
+                          "price_basis": "normal",
+                          "prices": {
+                            "cardmarket": {
+                              "trend": 0.18,
+                              "low": 0.02,
+                              "avg7": 0.16,
+                              "avg30": 0.14,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_normal": {
+                              "trend": 0.18,
+                              "low": 0.02,
+                              "avg7": 0.16,
+                              "avg30": 0.14,
+                              "currency": "EUR"
+                            },
+                            "cardmarket_reverse": {
+                              "trend": 2.19,
+                              "low": 0.15,
+                              "avg7": 1.54,
+                              "avg30": 1.48,
+                              "currency": "EUR"
+                            },
+                            "tcgplayer": {
+                              "market": 0.34,
+                              "currency": "USD"
+                            }
+                          },
+                          "images": {
+                            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swsh4/swsh4-130_small.webp",
+                            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swsh4/swsh4-130.png"
+                          },
+                          "confidence": null,
+                          "image_quality": {
+                            "blurred": false,
+                            "unusual_dimensions": false
+                          },
+                          "alternatives": [],
+                          "graded": null,
+                          "review": {
+                            "needed": false,
+                            "reasons": [],
+                            "search": null
+                          }
+                        }
+                      ],
+                      "count": 1,
+                      "has_more": false,
+                      "billing": {
+                        "charged_credits": 0,
+                        "source": "free_correction"
+                      },
+                      "correction": {
+                        "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                        "card_index": 1,
+                        "searches_left": 4
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid or too broad query (query_too_broad, invalid_card_index, unsupported_language ...).",
+            "description": "invalid_json, invalid_card_index, invalid_query, unsupported_language, unsupported_tcg, correction_not_available_for_tcg (football detections), query_too_broad, invalid_idempotency_key. Fix the request; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -382,7 +919,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. football_daily_limit, football_rate_limited. Retry-After is set.",
+            "description": "rate_limited (30 per minute per key, Retry-After 60), daily_cap_reached (the plan's daily search limit, or 500 correction searches per account per day; Retry-After until midnight UTC), correction_budget_exhausted (5 free searches of this card used), correction_limit_reached. football_daily_limit, football_rate_limited. Wait for Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -392,7 +929,7 @@
             }
           },
           "502": {
-            "description": "search_failed, lookup_failed. Retry.",
+            "description": "search_failed, lookup_failed. Retry with backoff.",
             "content": {
               "application/json": {
                 "schema": {
@@ -421,7 +958,7 @@
               "type": "string",
               "pattern": "^[A-Za-z0-9:_-]{8,100}$"
             },
-            "description": "Optional. A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409."
+            "description": "Optional on paid search and lookup (8 to 100 characters, A-Z a-z 0-9 : _ -). A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409 idempotency_in_progress. A malformed key: 400 invalid_idempotency_key."
           }
         ]
       }
@@ -430,13 +967,41 @@
       "post": {
         "operationId": "correctCard",
         "summary": "Correct a detected card (free)",
-        "description": "Card card_index of the detection becomes the catalog card card_id. Free, 3 corrections per detected card within 24 hours, same API key account (demo key: same network). Returns the full card in the detection shape. Corrections are used to improve the recognition.",
+        "description": "Card card_index of the detection becomes the catalog card card_id. Free: 3 corrections per detected card within 24 hours (the last one counts), 1000 corrections per account per day, same API key account (demo key: same network). Returns the full card in the detection shape. Pokémon: add cardmarket_id to pick a version from possible_variants (or the 1st Edition product), and reverse_holo for a reverse holo copy; prices.cardmarket then is that version's price. A corrected German, French, Spanish or Italian Pokémon card keeps its name in the card's language. Corrections are used to improve the recognition, and exports use the picked version and reverse_holo of the newest correction.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CorrectionRequest"
+              },
+              "examples": {
+                "pick_card": {
+                  "summary": "Pick another card (an alternative or a search result)",
+                  "value": {
+                    "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                    "card_index": 1,
+                    "card_id": "swsh4-130"
+                  }
+                },
+                "pick_version": {
+                  "summary": "Pokémon: pick a special version (Master Ball) by its possible_variants cardmarket_id",
+                  "value": {
+                    "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                    "card_index": 0,
+                    "card_id": "sv8pt5-74",
+                    "cardmarket_id": 806515
+                  }
+                },
+                "reverse_holo": {
+                  "summary": "Pokémon: the copy is a reverse holo",
+                  "value": {
+                    "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                    "card_index": 0,
+                    "card_id": "sv8pt5-74",
+                    "reverse_holo": true
+                  }
+                }
               }
             }
           }
@@ -448,12 +1013,345 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CorrectionResponse"
+                },
+                "examples": {
+                  "pick_card": {
+                    "summary": "Corrected card",
+                    "value": {
+                      "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                      "card_index": 1,
+                      "card": {
+                        "name": "Eevee",
+                        "name_ja": null,
+                        "name_ko": null,
+                        "name_zh": null,
+                        "language": "en",
+                        "card_id": "swsh4-130",
+                        "set": {
+                          "id": "swsh4",
+                          "ptcgo_code": "VIV",
+                          "name": "Vivid Voltage",
+                          "number": "130"
+                        },
+                        "rarity": "Common",
+                        "cardmarket_id": 512360,
+                        "reverse_holo": false,
+                        "first_edition": false,
+                        "possible_variants": [
+                          {
+                            "key": "reverse_holo",
+                            "label": "Reverse Holo",
+                            "special_variant": null,
+                            "cardmarket_id": 512360
+                          }
+                        ],
+                        "special_variant": null,
+                        "is_energy_card": false,
+                        "is_card_back": false,
+                        "price_basis": "normal",
+                        "prices": {
+                          "cardmarket": {
+                            "trend": 0.18,
+                            "low": 0.02,
+                            "avg7": 0.16,
+                            "avg30": 0.14,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_normal": {
+                            "trend": 0.18,
+                            "low": 0.02,
+                            "avg7": 0.16,
+                            "avg30": 0.14,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_reverse": {
+                            "trend": 2.19,
+                            "low": 0.15,
+                            "avg7": 1.54,
+                            "avg30": 1.48,
+                            "currency": "EUR"
+                          },
+                          "tcgplayer": {
+                            "market": 0.34,
+                            "currency": "USD"
+                          }
+                        },
+                        "images": {
+                          "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swsh4/swsh4-130_small.webp",
+                          "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swsh4/swsh4-130.png"
+                        },
+                        "confidence": null,
+                        "image_quality": {
+                          "blurred": false,
+                          "unusual_dimensions": false
+                        },
+                        "alternatives": [],
+                        "graded": null,
+                        "review": {
+                          "needed": false,
+                          "reasons": [],
+                          "search": null
+                        },
+                        "card_index": 1
+                      },
+                      "applies_left": 2,
+                      "correction": {
+                        "until": "2026-11-12T17:54:08.190Z"
+                      }
+                    }
+                  },
+                  "pick_version": {
+                    "summary": "Master Ball picked: price_basis special_variant, cardmarket_id 806515",
+                    "value": {
+                      "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                      "card_index": 0,
+                      "card": {
+                        "name": "Eevee",
+                        "name_ja": null,
+                        "name_ko": null,
+                        "name_zh": null,
+                        "language": "en",
+                        "card_id": "sv8pt5-74",
+                        "set": {
+                          "id": "sv8pt5",
+                          "ptcgo_code": "PRE",
+                          "name": "Prismatic Evolutions",
+                          "number": "74"
+                        },
+                        "rarity": "Common",
+                        "cardmarket_id": 806515,
+                        "reverse_holo": false,
+                        "first_edition": false,
+                        "possible_variants": [
+                          {
+                            "key": "reverse_holo",
+                            "label": "Reverse Holo",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "base",
+                            "label": "Base / Normal",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "pokeball",
+                            "label": "Poké Ball",
+                            "special_variant": "Pokeball",
+                            "cardmarket_id": 806514,
+                            "price": {
+                              "avg30": 1.1,
+                              "avg7": 1.1,
+                              "low": 0.25,
+                              "trend": 1.03,
+                              "lowPrice": 0.25,
+                              "trendPrice": 1.03,
+                              "idProduct": 806514,
+                              "updatedAt": "2026/11/11"
+                            }
+                          },
+                          {
+                            "key": "masterball",
+                            "label": "Master Ball",
+                            "special_variant": "Masterball",
+                            "cardmarket_id": 806515,
+                            "price": {
+                              "avg30": 9.23,
+                              "avg7": 10.15,
+                              "low": 2.49,
+                              "trend": 8.9,
+                              "lowPrice": 2.49,
+                              "trendPrice": 8.9,
+                              "idProduct": 806515,
+                              "updatedAt": "2026/11/11"
+                            }
+                          }
+                        ],
+                        "special_variant": "Masterball",
+                        "is_energy_card": false,
+                        "is_card_back": false,
+                        "price_basis": "special_variant",
+                        "prices": {
+                          "cardmarket": {
+                            "trend": 8.9,
+                            "low": 2.49,
+                            "avg7": 10.15,
+                            "avg30": 9.23,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_normal": {
+                            "trend": 0.08,
+                            "low": 0.02,
+                            "avg7": 0.08,
+                            "avg30": 0.07,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_reverse": {
+                            "trend": 0.33,
+                            "low": 0.02,
+                            "avg7": 0.28,
+                            "avg30": 0.25,
+                            "currency": "EUR"
+                          },
+                          "tcgplayer": {
+                            "market": null,
+                            "currency": "USD"
+                          }
+                        },
+                        "images": {
+                          "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74_small.webp",
+                          "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74.png"
+                        },
+                        "confidence": null,
+                        "image_quality": {
+                          "blurred": false,
+                          "unusual_dimensions": false
+                        },
+                        "alternatives": [],
+                        "graded": null,
+                        "review": {
+                          "needed": false,
+                          "reasons": [],
+                          "search": null
+                        },
+                        "card_index": 0
+                      },
+                      "applies_left": 2,
+                      "correction": {
+                        "until": "2026-11-12T17:54:08.190Z"
+                      }
+                    }
+                  },
+                  "reverse_holo": {
+                    "summary": "Reverse holo: prices.cardmarket is the reverse family (Cardmarket figures of 2026-11-11; the TCGplayer reverse holo figure is illustrative)",
+                    "value": {
+                      "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+                      "card_index": 0,
+                      "card": {
+                        "name": "Eevee",
+                        "name_ja": null,
+                        "name_ko": null,
+                        "name_zh": null,
+                        "language": "en",
+                        "card_id": "sv8pt5-74",
+                        "set": {
+                          "id": "sv8pt5",
+                          "ptcgo_code": "PRE",
+                          "name": "Prismatic Evolutions",
+                          "number": "74"
+                        },
+                        "rarity": "Common",
+                        "cardmarket_id": 805463,
+                        "reverse_holo": true,
+                        "first_edition": false,
+                        "possible_variants": [
+                          {
+                            "key": "reverse_holo",
+                            "label": "Reverse Holo",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "base",
+                            "label": "Base / Normal",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "pokeball",
+                            "label": "Poké Ball",
+                            "special_variant": "Pokeball",
+                            "cardmarket_id": 806514,
+                            "price": {
+                              "avg30": 1.1,
+                              "avg7": 1.1,
+                              "low": 0.25,
+                              "trend": 1.03,
+                              "lowPrice": 0.25,
+                              "trendPrice": 1.03,
+                              "idProduct": 806514,
+                              "updatedAt": "2026/11/11"
+                            }
+                          },
+                          {
+                            "key": "masterball",
+                            "label": "Master Ball",
+                            "special_variant": "Masterball",
+                            "cardmarket_id": 806515,
+                            "price": {
+                              "avg30": 9.23,
+                              "avg7": 10.15,
+                              "low": 2.49,
+                              "trend": 8.9,
+                              "lowPrice": 2.49,
+                              "trendPrice": 8.9,
+                              "idProduct": 806515,
+                              "updatedAt": "2026/11/11"
+                            }
+                          }
+                        ],
+                        "special_variant": null,
+                        "is_energy_card": false,
+                        "is_card_back": false,
+                        "price_basis": "reverse_holo",
+                        "prices": {
+                          "cardmarket": {
+                            "trend": 0.33,
+                            "low": 0.02,
+                            "avg7": 0.28,
+                            "avg30": 0.25,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_normal": {
+                            "trend": 0.08,
+                            "low": 0.02,
+                            "avg7": 0.08,
+                            "avg30": 0.07,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_reverse": {
+                            "trend": 0.33,
+                            "low": 0.02,
+                            "avg7": 0.28,
+                            "avg30": 0.25,
+                            "currency": "EUR"
+                          },
+                          "tcgplayer": {
+                            "market": 0.45,
+                            "currency": "USD"
+                          }
+                        },
+                        "images": {
+                          "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74_small.webp",
+                          "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74.png"
+                        },
+                        "confidence": null,
+                        "image_quality": {
+                          "blurred": false,
+                          "unusual_dimensions": false
+                        },
+                        "alternatives": [],
+                        "graded": null,
+                        "review": {
+                          "needed": false,
+                          "reasons": [],
+                          "search": null
+                        },
+                        "card_index": 0
+                      },
+                      "applies_left": 1,
+                      "correction": {
+                        "until": "2026-11-12T17:54:08.190Z"
+                      }
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid or too broad query (query_too_broad, invalid_card_index, unsupported_language ...).",
+            "description": "invalid_json, invalid_card_index, invalid_card_id, invalid_query (for example reverse_holo for a game other than Pokémon), unsupported_language, unsupported_tcg, unsupported_cardmarket_id (Pokémon: the cardmarket_id is not the card's own, its 1st Edition product or one of its possible_variants), correction_not_available_for_tcg (football). Fix the request; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -503,7 +1401,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached. Retry-After is set.",
+            "description": "rate_limited (Retry-After 60), daily_cap_reached (1000 corrections per account per day; Retry-After until midnight UTC), correction_limit_reached (3 corrections of this card used), correction_budget_exhausted. Retry-After is set.",
             "content": {
               "application/json": {
                 "schema": {
@@ -513,7 +1411,7 @@
             }
           },
           "502": {
-            "description": "search_failed, lookup_failed. Retry.",
+            "description": "search_failed, lookup_failed. Retry with backoff.",
             "content": {
               "application/json": {
                 "schema": {
@@ -539,7 +1437,7 @@
       "get": {
         "operationId": "getCard",
         "summary": "One card by id (paid)",
-        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Digimon Card Game: the card_id of a printing (dg-BT1-025_P1, dg-ja-BT1-025_P1; the id names its language) or of the card (dg-c-BT1-025, or the bare number BT1-025), which answers the card with its printings. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
+        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; cardmarket_id picks a version (the card's own, its 1st Edition product or a possible_variants[].cardmarket_id, else 400 unsupported_cardmarket_id) and reverse_holo=true prices the reverse holo; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Digimon Card Game: the card_id of a printing (dg-BT1-025_P1, dg-ja-BT1-025_P1; the id names its language) or of the card (dg-c-BT1-025, or the bare number BT1-025), which answers the card with its printings. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
         "parameters": [
           {
             "name": "tcg",
@@ -597,7 +1495,16 @@
               "type": "integer",
               "minimum": 1
             },
-            "description": "Picks a printing or parallel (One Piece)."
+            "description": "Pokémon: picks a version, the card's own cardmarket_id, its 1st Edition product or a possible_variants[].cardmarket_id of that card; the answer has price_basis special_variant and that version's price. Any other id: 400 unsupported_cardmarket_id. One Piece: picks a parallel."
+          },
+          {
+            "name": "reverse_holo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Pokémon only: true prices the card as a reverse holo (prices.cardmarket is the reverse family, price_basis reverse_holo) where a reverse holo exists."
           },
           {
             "name": "set",
@@ -634,7 +1541,7 @@
               "type": "string",
               "pattern": "^[A-Za-z0-9:_-]{8,100}$"
             },
-            "description": "Optional. A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409."
+            "description": "Optional on paid search and lookup (8 to 100 characters, A-Z a-z 0-9 : _ -). A repeat with the same key and the same request within 24 hours returns the stored answer, uncharged, with the header Idempotent-Replayed: true. Another request under the same key: 422 idempotency_key_reuse. While the first call runs: 409 idempotency_in_progress. A malformed key: 400 invalid_idempotency_key."
           }
         ],
         "responses": {
@@ -702,12 +1609,141 @@
                           "unusual_dimensions": false
                         },
                         "alternatives": [],
-                        "graded": null
+                        "graded": null,
+                        "review": {
+                          "needed": false,
+                          "reasons": [],
+                          "search": null
+                        }
                       },
                       "billing": {
                         "charged_credits": 0.5,
                         "source": "debited",
                         "prepaid_half": true
+                      }
+                    }
+                  },
+                  "pokemon_version": {
+                    "summary": "Pokémon: one version, GET /cardsApi/cards/pokemon/sv8pt5-74?cardmarket_id=806514 (Poké Ball)",
+                    "value": {
+                      "card": {
+                        "name": "Eevee",
+                        "name_ja": null,
+                        "name_ko": null,
+                        "name_zh": null,
+                        "language": "en",
+                        "card_id": "sv8pt5-74",
+                        "set": {
+                          "id": "sv8pt5",
+                          "ptcgo_code": "PRE",
+                          "name": "Prismatic Evolutions",
+                          "number": "74"
+                        },
+                        "rarity": "Common",
+                        "cardmarket_id": 806514,
+                        "reverse_holo": false,
+                        "first_edition": false,
+                        "possible_variants": [
+                          {
+                            "key": "reverse_holo",
+                            "label": "Reverse Holo",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "base",
+                            "label": "Base / Normal",
+                            "special_variant": null,
+                            "cardmarket_id": 805463
+                          },
+                          {
+                            "key": "pokeball",
+                            "label": "Poké Ball",
+                            "special_variant": "Pokeball",
+                            "cardmarket_id": 806514,
+                            "price": {
+                              "avg30": 1.1,
+                              "avg7": 1.1,
+                              "low": 0.25,
+                              "trend": 1.03,
+                              "lowPrice": 0.25,
+                              "trendPrice": 1.03,
+                              "idProduct": 806514,
+                              "updatedAt": "2026/11/11"
+                            }
+                          },
+                          {
+                            "key": "masterball",
+                            "label": "Master Ball",
+                            "special_variant": "Masterball",
+                            "cardmarket_id": 806515,
+                            "price": {
+                              "avg30": 9.23,
+                              "avg7": 10.15,
+                              "low": 2.49,
+                              "trend": 8.9,
+                              "lowPrice": 2.49,
+                              "trendPrice": 8.9,
+                              "idProduct": 806515,
+                              "updatedAt": "2026/11/11"
+                            }
+                          }
+                        ],
+                        "special_variant": "Pokeball",
+                        "is_energy_card": false,
+                        "is_card_back": false,
+                        "price_basis": "special_variant",
+                        "prices": {
+                          "cardmarket": {
+                            "trend": 1.03,
+                            "low": 0.25,
+                            "avg7": 1.1,
+                            "avg30": 1.1,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_normal": {
+                            "trend": 0.08,
+                            "low": 0.02,
+                            "avg7": 0.08,
+                            "avg30": 0.07,
+                            "currency": "EUR"
+                          },
+                          "cardmarket_reverse": {
+                            "trend": 0.33,
+                            "low": 0.02,
+                            "avg7": 0.28,
+                            "avg30": 0.25,
+                            "currency": "EUR"
+                          },
+                          "tcgplayer": {
+                            "market": null,
+                            "currency": "USD"
+                          }
+                        },
+                        "images": {
+                          "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74_small.webp",
+                          "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/sv8pt5/sv8pt5-74.png"
+                        },
+                        "confidence": null,
+                        "image_quality": {
+                          "blurred": false,
+                          "unusual_dimensions": false
+                        },
+                        "alternatives": [],
+                        "graded": null,
+                        "review": {
+                          "needed": false,
+                          "reasons": [],
+                          "search": null
+                        }
+                      },
+                      "billing": {
+                        "charged_credits": 0.5,
+                        "source": "debited",
+                        "prepaid_half": true
+                      },
+                      "credits": {
+                        "remaining": 1955
                       }
                     }
                   }
@@ -716,7 +1752,7 @@
             }
           },
           "400": {
-            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, ref_required, ref_invalid, ref_expired (football).",
+            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, unsupported_cardmarket_id (Pokémon: not a version of this card), invalid_idempotency_key, ref_required, ref_invalid, ref_expired (football). Nothing charged; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -786,7 +1822,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, daily_cap_reached. football_daily_limit, football_rate_limited. Retry-After is set.",
+            "description": "rate_limited (30 per minute per key, Retry-After 60), daily_cap_reached (the plan's daily lookup limit, Retry-After until midnight UTC). football_daily_limit, football_rate_limited.",
             "content": {
               "application/json": {
                 "schema": {
@@ -796,7 +1832,7 @@
             }
           },
           "502": {
-            "description": "lookup_failed. Retry.",
+            "description": "lookup_failed. Retry with backoff.",
             "content": {
               "application/json": {
                 "schema": {
@@ -822,7 +1858,7 @@
       "post": {
         "operationId": "exportCards",
         "summary": "Export detections as CSV, JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV (free)",
-        "description": "The custom CSV or JSON file, the TCGPowerTools CSV, the Shopify product CSV or the eBay Seller Hub draft CSV of up to 20 detections of your account, built by the NeoSatoshi website's own export code: saved presets, the condition for new cards from the website settings, the seller's price rules and templates and API corrections are applied. Detections keep their cards for 48 hours (own API key; the detection answer carries `export`). Free, 200 exports per account per day.",
+        "description": "The custom CSV or JSON file, the TCGPowerTools CSV, the Shopify product CSV or the eBay Seller Hub draft CSV of up to 20 detections of your account, built by the NeoSatoshi website's own export code: saved presets, the condition for new cards from the website settings, the seller's price rules and templates and API corrections are applied. Detections keep their cards for 48 hours (own API key; the detection answer carries `export`). Free, 200 exports per account per day. A Pokémon card whose newest correction picked a version (cardmarket_id) or set reverse_holo is priced and exported as that Cardmarket product instead of being skipped as variant_pick_needed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1037,13 +2073,14 @@
           },
           "count": {
             "type": "integer",
-            "description": "Number of detected cards."
+            "description": "Number of cards in cards (every detected card, also low-confidence best guesses)."
           },
           "cards": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Card"
-            }
+              "$ref": "#/components/schemas/AnyCard"
+            },
+            "description": "Every detected card. Check cards[].review.needed for each one."
           },
           "credits": {
             "type": "object",
@@ -1093,19 +2130,39 @@
           },
           "correction": {
             "type": "object",
-            "description": "Only when this detection can be corrected for free: send request_id and cards[].card_index to the card search and the corrections endpoint until `until`.",
+            "description": "Only when this detection can be corrected for free: send request_id and cards[].card_index first to search_endpoint (correction search), then to endpoint (corrections), until `until` (24 hours).",
             "properties": {
               "request_id": {
-                "type": "string"
+                "type": "string",
+                "description": "Use it in the correction search and the correction."
               },
               "until": {
                 "type": "string",
-                "format": "date-time"
+                "format": "date-time",
+                "description": "End of the free correction window."
               },
               "endpoint": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "description": "POST /cardsApi/corrections, the second step."
+              },
+              "search_endpoint": {
+                "type": "string",
+                "format": "uri",
+                "description": "POST /cardsApi/search, the first step (correction search). New 2026-11-11."
               }
+            },
+            "required": [
+              "request_id",
+              "until",
+              "endpoint",
+              "search_endpoint"
+            ],
+            "example": {
+              "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+              "until": "2026-11-12T17:54:08.190Z",
+              "endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/corrections",
+              "search_endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search"
             }
           },
           "export": {
@@ -1129,7 +2186,7 @@
       },
       "Card": {
         "type": "object",
-        "description": "Fields shared by every game are listed here. Each game adds its own: Pokémon name_ja / name_ko / name_zh, reverse_holo, first_edition, special_variant; One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; Digimon Card Game card_key (the card number, e.g. BT1-025, one card in English and Japanese), print_id (the official printing, e.g. BT1-025_P1), name_en, type, level, colors, set.code, variant (Alternative Art, or パラレル on a Japanese parallel), parallel_index, finishes, print_unconfirmed, number_unconfirmed (card_id is dg-<print_id> for an English printing, dg-ja-<print_id> for a Japanese one and dg-c-<number> while the printing is open: then there is no price and the alternatives are the printings, each priced; no foil, and Japanese cards have a Cardmarket price but no TCGplayer price); football season, subset, teams, rookie, card_type, sure, score, parallel, box (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
+        "description": "Fields shared by every game are listed here. Pokémon cards are described in full by PokemonCard (no tcg field). Each other game adds its own: One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; Digimon Card Game card_key (the card number, e.g. BT1-025, one card in English and Japanese), print_id (the official printing, e.g. BT1-025_P1), name_en, type, level, colors, set.code, variant (Alternative Art, or パラレル on a Japanese parallel), parallel_index, finishes, print_unconfirmed, number_unconfirmed (card_id is dg-<print_id> for an English printing, dg-ja-<print_id> for a Japanese one and dg-c-<number> while the printing is open: then there is no price and the alternatives are the printings, each priced; no foil, and Japanese cards have a Cardmarket price but no TCGplayer price); football season, subset, teams, rookie, card_type, sure, score, parallel, box (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -1206,7 +2263,7 @@
               "object",
               "null"
             ],
-            "description": "cardmarket in EUR (trend, low, avg7, avg30), tcgplayer in USD where available. A missing price is null, never 0. null for football: football prices are not in the API yet.",
+            "description": "cardmarket in EUR (trend, low, avg7, avg30, see PriceFamily), tcgplayer in USD where available (see TcgplayerPrice). Game-specific families (cardmarket_foil and others) are listed per game. A missing price is null, never 0. null for football: football prices are not in the API yet.",
             "additionalProperties": true
           },
           "images": {
@@ -1228,9 +2285,13 @@
             "description": "Reference image on our CDN. Both null for football: we hold no football card images."
           },
           "confidence": {
-            "type": "number",
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0,
-            "maximum": 1
+            "maximum": 1,
+            "description": "Detection confidence, a fixed step per match method (not a probability). Below 0.85 the card has review reason low_confidence. Compare it only with these steps, never with alternatives[].score. null in search, lookup and correction results."
           },
           "image_quality": {
             "type": "object",
@@ -1265,7 +2326,7 @@
                 }
               }
             },
-            "description": "Other likely matches for a manual pick."
+            "description": "Other likely matches for a manual pick. A score in an alternative is a similarity inside this search on another scale than confidence: never pick an alternative by score alone."
           },
           "season": {
             "type": [
@@ -1402,6 +2463,9 @@
           "card_index": {
             "type": "integer",
             "description": "Position of the card in this detection (0, 1, 2 ...). A correction names the card by request_id and card_index."
+          },
+          "review": {
+            "$ref": "#/components/schemas/Review"
           }
         }
       },
@@ -1412,14 +2476,23 @@
         ],
         "properties": {
           "error": {
-            "type": "string"
+            "type": "string",
+            "description": "Machine-readable code; the list can grow, so handle unknown codes by their HTTP status. Detection: 400 missing_image, ambiguous_image, bad_image, image_too_large, unsupported_image, unsupported_tcg, bad_image_url, image_url_fetch_failed; 401 missing_api_key, invalid_api_key; 402 out_of_credits; 405 method_not_allowed; 422 no_card_detected, unreadable_image; 429 rate_limited, demo_limit_reached, football_busy; 502 credit_service_unavailable, upload_init_failed, upload_failed, detection_failed; 503 football_daily_limit, football_unavailable, football_busy; 504 detection_timeout. Card search, lookup and corrections: 400 invalid_json, invalid_card_index, invalid_card_id, invalid_query, unsupported_language, unsupported_tcg, unsupported_cardmarket_id, correction_not_available_for_tcg, query_too_broad, invalid_idempotency_key, ref_required, ref_invalid, ref_expired; 401 missing_api_key, invalid_api_key; 402 out_of_credits; 403 feature_not_enabled, request_not_yours, paid_search_not_enabled; 404 unknown_request_id, card_not_found; 409 idempotency_in_progress; 410 correction_window_closed; 422 idempotency_key_reuse; 429 rate_limited, daily_cap_reached, correction_budget_exhausted, correction_limit_reached, football_daily_limit, football_rate_limited; 502 lookup_failed, search_failed; 503 cards_api_disabled, limiter_unavailable, billing_unavailable, football_unavailable. Exports: see POST /cardsApi/exports. Retry 429 after Retry-After and 502, 503 and 504 with backoff; do not retry other 4xx. A retried detection is a new, charged detection."
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable explanation."
           },
           "docs": {
-            "type": "string"
+            "type": "string",
+            "description": "Link to the documentation."
           }
+        },
+        "additionalProperties": true,
+        "example": {
+          "error": "unsupported_cardmarket_id",
+          "message": "cardmarket_id 806514 is not a version of svp-163.",
+          "docs": "https://neosatoshi.com/developers/detection-api#correcting"
         }
       },
       "StreamAccepted": {
@@ -1474,7 +2547,7 @@
             "description": "The position of this card in the cards of the done event."
           },
           "card": {
-            "$ref": "#/components/schemas/Card"
+            "$ref": "#/components/schemas/AnyCard"
           }
         }
       },
@@ -1683,6 +2756,14 @@
             "maximum": 5,
             "default": 5
           }
+        },
+        "description": "Free correction search. The quickest body is {\"request_id\": correction.request_id, ...cards[i].review.search}, plus number when you read it on the photo.",
+        "example": {
+          "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+          "card_index": 1,
+          "tcg": "pokemon",
+          "q": "Eevee",
+          "number": "130"
         }
       },
       "CorrectionSearchResponse": {
@@ -1696,7 +2777,7 @@
           "results": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Card"
+              "$ref": "#/components/schemas/AnyCard"
             },
             "description": "Full card objects in the detection shape; confidence, image_quality and graded are null."
           },
@@ -1754,15 +2835,24 @@
           },
           "card_id": {
             "type": "string",
-            "description": "card_id of a search result or an alternative. Yu-Gi-Oh!: the passcode; Magic: the oracle_id when the printing is open; SWU: a printing id or the card_key; Digimon: a printing id (dg-...) or dg-c-<number>."
+            "description": "card_id of a search result or an alternative. Yu-Gi-Oh!: the passcode; Magic: the oracle_id when the printing is open; SWU: a printing id or the card_key; Digimon: a printing id (dg-...) or dg-c-<number>. Pokémon: for example \"swsh4-130\"; send the same card_id with cardmarket_id or reverse_holo to change only the version."
           },
           "language": {
             "type": "string",
             "description": "Card language. Default: the detected card's language."
           },
           "cardmarket_id": {
-            "type": "integer",
-            "description": "Optional: picks one printing where a card_id has several."
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$"
+              }
+            ],
+            "description": "Optional, picks the version. Pokémon: the card's own cardmarket_id, its 1st Edition product or a possible_variants[].cardmarket_id of that card (an integer or a digit string); the answer then has that entry's special_variant, cardmarket_id = the pick, price_basis special_variant and prices.cardmarket = that version's price. Any other id: 400 unsupported_cardmarket_id (before 2026-11-11 it was ignored silently). One Piece: picks a parallel printing. Other games: ignored."
           },
           "set": {
             "type": "string",
@@ -1771,8 +2861,31 @@
           "number": {
             "type": "string",
             "description": "Magic, SWU: collector number of the printing."
+          },
+          "reverse_holo": {
+            "type": "boolean",
+            "description": "Pokémon only (other games: 400 invalid_query). true: the copy is a reverse holo, prices.cardmarket becomes the reverse holo price (price_basis reverse_holo). false: it is not. Default: the detected card's reverse_holo, re-checked for the new card (reverse holo exists only on Common, Uncommon and Rare from 2002-05-24). first_edition is kept from the detection the same way."
           }
-        }
+        },
+        "examples": [
+          {
+            "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+            "card_index": 1,
+            "card_id": "swsh4-130"
+          },
+          {
+            "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+            "card_index": 0,
+            "card_id": "sv8pt5-74",
+            "cardmarket_id": 806515
+          },
+          {
+            "request_id": "req_c54be8d3-344d-4468-8cac-42b647ac457a",
+            "card_index": 0,
+            "card_id": "sv8pt5-74",
+            "reverse_holo": true
+          }
+        ]
       },
       "CorrectionResponse": {
         "type": "object",
@@ -1789,10 +2902,11 @@
             "type": "integer"
           },
           "card": {
-            "$ref": "#/components/schemas/Card"
+            "$ref": "#/components/schemas/AnyCard"
           },
           "applies_left": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Corrections left for this card (3 per detected card; the last one counts)."
           },
           "correction": {
             "type": "object",
@@ -1874,7 +2988,7 @@
           "results": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Card"
+              "$ref": "#/components/schemas/AnyCard"
             },
             "description": "Full card objects in the detection shape; confidence, image_quality and graded are null. Football results carry ref (pass it to the lookup within 24 hours) and prices null."
           },
@@ -1943,7 +3057,7 @@
         ],
         "properties": {
           "card": {
-            "$ref": "#/components/schemas/Card"
+            "$ref": "#/components/schemas/AnyCard"
           },
           "billing": {
             "type": "object",
@@ -2060,6 +3174,7 @@
               "end_90",
               "end_99",
               "end_49_99",
+              "end_cent_9",
               "end_9",
               "end_5_9"
             ],
@@ -2419,6 +3534,686 @@
             "type": "integer"
           }
         }
+      },
+      "PriceFamily": {
+        "type": "object",
+        "description": "One Cardmarket price family in EUR, refreshed daily. A missing figure is null, never 0.",
+        "properties": {
+          "trend": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Cardmarket price trend."
+          },
+          "low": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Lowest current offer."
+          },
+          "avg7": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Average sell price of the last 7 days."
+          },
+          "avg30": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Average sell price of the last 30 days."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "EUR"
+            ]
+          }
+        },
+        "required": [
+          "trend",
+          "low",
+          "avg7",
+          "avg30",
+          "currency"
+        ],
+        "example": {
+          "trend": 3.84,
+          "low": 1,
+          "avg7": 3.87,
+          "avg30": 3.87,
+          "currency": "EUR"
+        }
+      },
+      "TcgplayerPrice": {
+        "type": "object",
+        "description": "TCGplayer market price in USD. Pokémon: the market price of the printing (reverse holo, 1st Edition, holo or normal); market is null for a special variant and when TCGplayer has no price. Other games add their own fields (for example foil or by_edition), see Card.",
+        "additionalProperties": true,
+        "properties": {
+          "market": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "TCGplayer market price."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD"
+            ]
+          }
+        },
+        "required": [
+          "market",
+          "currency"
+        ],
+        "example": {
+          "market": 0.45,
+          "currency": "USD"
+        }
+      },
+      "PossibleVariantPrice": {
+        "type": "object",
+        "description": "Cardmarket price (EUR) of one special version. low and trend are the documented names; lowPrice and trendPrice carry the same values and are deprecated. Unknown extra upstream fields are kept.",
+        "additionalProperties": true,
+        "properties": {
+          "avg30": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg7": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "low": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trend": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lowPrice": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Deprecated: same value as low."
+          },
+          "trendPrice": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "deprecated": true,
+            "description": "Deprecated: same value as trend."
+          },
+          "idProduct": {
+            "type": "integer",
+            "description": "Cardmarket product id of this version (equals the entry's cardmarket_id)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^[0-9]{4}/[0-9]{2}/[0-9]{2}$",
+            "description": "Day of the price, YYYY/MM/DD."
+          }
+        },
+        "example": {
+          "avg30": 1.1,
+          "avg7": 1.1,
+          "low": 0.25,
+          "trend": 1.03,
+          "lowPrice": 0.25,
+          "trendPrice": 1.03,
+          "idProduct": 806514,
+          "updatedAt": "2026/11/11"
+        }
+      },
+      "PossibleVariant": {
+        "type": "object",
+        "description": "Pokémon: one known catalog version of this card (not what the photo shows). Offer the entries to a person; never pick the first one automatically. Entries base, reverse_holo and first_edition carry no own price: their prices are prices.cardmarket_normal, prices.cardmarket_reverse and the 1st Edition price. To choose an entry, send its cardmarket_id to POST /cardsApi/corrections (or ?cardmarket_id= on the lookup). Unknown extra upstream fields are kept.",
+        "additionalProperties": true,
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable key, for example base, reverse_holo, first_edition, pokeball, masterball, shadowless, prerelease."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label, for example \"Poké Ball\"."
+          },
+          "special_variant": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The special_variant value this entry sets when picked, for example \"Pokeball\"; null for base, reverse_holo and first_edition."
+          },
+          "cardmarket_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Cardmarket product id of this version. Always an integer (before 2026-11-11 sometimes a digit string). null when unknown (for example first_edition outside Base Set)."
+          },
+          "price": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PossibleVariantPrice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Own price of a special version, null or absent when it has none."
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "special_variant",
+          "cardmarket_id"
+        ],
+        "example": {
+          "key": "pokeball",
+          "label": "Poké Ball",
+          "special_variant": "Pokeball",
+          "cardmarket_id": 806514,
+          "price": {
+            "avg30": 1.1,
+            "avg7": 1.1,
+            "low": 0.25,
+            "trend": 1.03,
+            "lowPrice": 0.25,
+            "trendPrice": 1.03,
+            "idProduct": 806514,
+            "updatedAt": "2026/11/11"
+          }
+        }
+      },
+      "PokemonPrices": {
+        "type": "object",
+        "description": "Pokémon prices. cardmarket is the price of the version the card is (see price_basis): a picked version, a detected special variant (all null when that version has no price, never the plain card's), the 1st Edition price for first_edition true (only Base Set has a distinct one), the reverse holo price for reverse_holo true (a figure the reverse family lacks falls back to the plain card's figure), else the plain card. Before 2026-11-11 cardmarket was always the plain card's price.",
+        "properties": {
+          "cardmarket": {
+            "$ref": "#/components/schemas/PriceFamily",
+            "description": "Price of the version the card is (price_basis)."
+          },
+          "cardmarket_normal": {
+            "$ref": "#/components/schemas/PriceFamily",
+            "description": "The plain card's price family (what cardmarket was before 2026-11-11)."
+          },
+          "cardmarket_reverse": {
+            "$ref": "#/components/schemas/PriceFamily",
+            "description": "The reverse holo family of the plain product; every figure null when Cardmarket has none."
+          },
+          "tcgplayer": {
+            "$ref": "#/components/schemas/TcgplayerPrice"
+          }
+        },
+        "required": [
+          "cardmarket"
+        ]
+      },
+      "ReviewSearch": {
+        "type": "object",
+        "description": "A ready body for the free correction search, without request_id. Send POST /cardsApi/search with {\"request_id\": response.correction.request_id, ...review.search}. Add number (or set and number) when you have read them on the photo.",
+        "properties": {
+          "card_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tcg": {
+            "type": "string",
+            "description": "The card's game, for example pokemon."
+          },
+          "q": {
+            "type": "string",
+            "description": "The detected name."
+          }
+        },
+        "required": [
+          "card_index",
+          "tcg",
+          "q"
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "description": "Per-card hint whether a person or your code should check this card. Present on every card of every game, in detections, search results, lookups and corrections. Rule: accept the card when needed is false; otherwise check it and correct it if it is wrong (free).\n\nReason codes (treat an unknown code as needing review): low_confidence (confidence below 0.85; Pokémon best guess 0.59, Japanese/Korean/Chinese best guesses 0.60, 0.72, 0.78, 0.82); visual_mismatch (the picture does not look like the matched card; such a card is not charged); card_back (a card back, not charged); no_match (no catalog card, card_id null); blurred, unusual_dimensions (image quality); variant_price_missing (the card is a reverse holo or special version but that version has no own Cardmarket price); print_unconfirmed, rarity_unconfirmed, version_unconfirmed, number_unconfirmed, art_unconfirmed (the game's own open flags: Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon, Lorcana); graded_label_mismatch (a slab label names another card, graded.card_check disagree); not_sure (football recognizer not sure, sure false); parallel_unconfirmed (football parallel not picked).",
+        "properties": {
+          "needed": {
+            "type": "boolean",
+            "description": "true when any reason is present."
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Reason codes, see the schema description. Empty when needed is false."
+          },
+          "search": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSearch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Correction search body when the card can be corrected; null when no review is needed, for football (no football corrections) and for search and lookup results (no card_index)."
+          }
+        },
+        "required": [
+          "needed",
+          "reasons",
+          "search"
+        ],
+        "example": {
+          "needed": true,
+          "reasons": [
+            "low_confidence"
+          ],
+          "search": {
+            "card_index": 1,
+            "tcg": "pokemon",
+            "q": "Eevee"
+          }
+        }
+      },
+      "PokemonAlternative": {
+        "type": "object",
+        "description": "Another candidate for this Pokémon card. score is the relative visual and text similarity of the candidate inside this search, a different scale from the match's confidence: an alternative can score higher than the match's confidence and still be wrong. Never pick an alternative by score alone; pick one whose set number matches the card.",
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "set": {
+            "type": "string",
+            "description": "Set name (a string here, not an object)."
+          },
+          "number": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "description": "Relative similarity inside this search (0 to 1). Not comparable with confidence."
+          },
+          "possible_variants": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PossibleVariant"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Send it to POST /cardsApi/corrections to pick this alternative."
+          },
+          "cardmarket_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "PokemonCard": {
+        "type": "object",
+        "description": "A Pokémon card (Pokémon cards have no tcg field). Detection, correction search, card search, lookup and correction all return this shape; fields only a photo can tell (confidence, graded) are null in search and lookup results, and card_index is only present on detected and corrected cards.",
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name in the card's language (German Gallopa stays Gallopa, also after a correction); the English name for Japanese, Korean and Chinese cards (their own name is in name_ja, name_ko, name_zh) and when the catalog has no localized name."
+          },
+          "name_ja": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name_ko": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name_zh": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "de",
+              "fr",
+              "it",
+              "es",
+              "ja",
+              "ko",
+              "zh"
+            ]
+          },
+          "card_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Our stable card id, for example \"svp-163\". null when no catalog card matched (review reason no_match)."
+          },
+          "set": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Set id, for example \"sv3pt5\"."
+              },
+              "ptcgo_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Short set code, for example \"MEW\"."
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Set name, in English."
+              },
+              "number": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Card number in the set, a string (\"SWSH095\", \"4\")."
+              }
+            }
+          },
+          "rarity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cardmarket_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The Cardmarket product that prices.cardmarket describes: a picked version, else the 1st Edition product (first_edition true and known), else the plain card. Before 2026-11-11 always the plain product."
+          },
+          "reverse_holo": {
+            "type": "boolean",
+            "description": "The copy is a reverse holo (detected, or set in a correction). Reverse holo exists only on Common, Uncommon and Rare cards from 2002-05-24."
+          },
+          "first_edition": {
+            "type": "boolean",
+            "description": "The copy is a 1st Edition print."
+          },
+          "possible_variants": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PossibleVariant"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Known catalog versions of this card, for a person to pick. null does not prove there are none."
+          },
+          "special_variant": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The special version of this copy, for example \"Pokeball\": detected, or picked with a cardmarket_id in a correction or lookup."
+          },
+          "is_energy_card": {
+            "type": "boolean"
+          },
+          "is_card_back": {
+            "type": "boolean",
+            "description": "The photo shows a card back (not charged; review reason card_back)."
+          },
+          "price_basis": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "reverse_holo",
+              "first_edition",
+              "special_variant"
+            ],
+            "description": "What prices.cardmarket describes. A reverse holo card whose reverse prices are missing entirely says normal (review reason variant_price_missing)."
+          },
+          "prices": {
+            "$ref": "#/components/schemas/PokemonPrices"
+          },
+          "images": {
+            "type": "object",
+            "properties": {
+              "small": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "large": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "description": "Reference images on our CDN."
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "A fixed step per match method, not a probability: 0.99 direct match, 0.95 number matched, 0.90 direct match (step 3), 0.85 number matched (step 3 or 4), 0.80 direct match (step 4), 0.59 best guess. Japanese, Korean and Chinese cards have their own steps (0.99 down to 0.60). null in search, lookup and correction results."
+          },
+          "image_quality": {
+            "type": "object",
+            "properties": {
+              "blurred": {
+                "type": "boolean"
+              },
+              "unusual_dimensions": {
+                "type": "boolean"
+              }
+            }
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PokemonAlternative"
+            },
+            "description": "Other candidates. Empty in search, lookup and correction results."
+          },
+          "graded": {
+            "$ref": "#/components/schemas/Graded"
+          },
+          "card_index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Position of the card in this detection. Detected and corrected cards only."
+          },
+          "review": {
+            "$ref": "#/components/schemas/Review"
+          }
+        },
+        "required": [
+          "name",
+          "language",
+          "set",
+          "prices"
+        ],
+        "example": {
+          "name": "Eevee",
+          "name_ja": null,
+          "name_ko": null,
+          "name_zh": null,
+          "language": "en",
+          "card_id": "swshp-SWSH095",
+          "set": {
+            "id": "swshp",
+            "ptcgo_code": "PR-SW",
+            "name": "SWSH Black Star Promos",
+            "number": "SWSH095"
+          },
+          "rarity": "Promo",
+          "cardmarket_id": 547026,
+          "reverse_holo": false,
+          "first_edition": false,
+          "possible_variants": null,
+          "special_variant": null,
+          "is_energy_card": false,
+          "is_card_back": false,
+          "price_basis": "normal",
+          "prices": {
+            "cardmarket": {
+              "trend": 4.75,
+              "low": 0.95,
+              "avg7": 3.76,
+              "avg30": 4.32,
+              "currency": "EUR"
+            },
+            "cardmarket_normal": {
+              "trend": 4.75,
+              "low": 0.95,
+              "avg7": 3.76,
+              "avg30": 4.32,
+              "currency": "EUR"
+            },
+            "cardmarket_reverse": {
+              "trend": 1.4,
+              "low": null,
+              "avg7": 1.68,
+              "avg30": 1.93,
+              "currency": "EUR"
+            },
+            "tcgplayer": {
+              "market": 4.07,
+              "currency": "USD"
+            }
+          },
+          "images": {
+            "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swshp/swshp-SWSH095_small.webp",
+            "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/swshp/swshp-SWSH095.png"
+          },
+          "confidence": 0.59,
+          "image_quality": {
+            "blurred": false,
+            "unusual_dimensions": false
+          },
+          "alternatives": [
+            {
+              "name": "Eevee",
+              "set": "Vivid Voltage",
+              "number": "130",
+              "score": 0.77,
+              "possible_variants": [
+                {
+                  "key": "reverse_holo",
+                  "label": "Reverse Holo",
+                  "special_variant": null,
+                  "cardmarket_id": 512360
+                }
+              ],
+              "card_id": "swsh4-130",
+              "cardmarket_id": 512360
+            },
+            {
+              "name": "Eevee",
+              "set": "Shining Fates",
+              "number": "52",
+              "score": 0.67,
+              "possible_variants": [
+                {
+                  "key": "reverse_holo",
+                  "label": "Reverse Holo",
+                  "special_variant": null,
+                  "cardmarket_id": 539283
+                }
+              ],
+              "card_id": "swsh45-52",
+              "cardmarket_id": 539283
+            },
+            {
+              "name": "Eevee",
+              "set": "SWSH Black Star Promos",
+              "number": "SWSH042",
+              "score": 0.67,
+              "possible_variants": null,
+              "card_id": "swshp-SWSH042",
+              "cardmarket_id": 491204
+            }
+          ],
+          "graded": null,
+          "card_index": 1,
+          "review": {
+            "needed": true,
+            "reasons": [
+              "low_confidence"
+            ],
+            "search": {
+              "card_index": 1,
+              "tcg": "pokemon",
+              "q": "Eevee"
+            }
+          }
+        }
+      },
+      "AnyCard": {
+        "description": "A card of any game. Pokémon cards (no tcg field) follow PokemonCard; every other game carries tcg and follows Card with its game-specific fields.",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PokemonCard"
+          },
+          {
+            "$ref": "#/components/schemas/Card"
+          }
+        ]
       }
     }
   }

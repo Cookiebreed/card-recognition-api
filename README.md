@@ -78,11 +78,11 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 
 ## Response
 
-Recorded response for [examples/images/example_api_single.jpg](examples/images/example_api_single.jpg) (Pokémon, Cinderace ex):
+Recorded response for [examples/images/example_api_single.jpg](examples/images/example_api_single.jpg) (Pokémon, Cinderace ex, demo key, 2026-11-11):
 
 ```json
 {
-  "request_id": "req_adec9d16-14dc-40a8-9d8c-2df9de2ad3a5",
+  "request_id": "req_745cfd72-7f1c-4e4c-94d3-91e2485b8b2d",
   "count": 1,
   "cards": [
     {
@@ -91,13 +91,21 @@ Recorded response for [examples/images/example_api_single.jpg](examples/images/e
       "name_ko": null,
       "name_zh": null,
       "language": "en",
+      "card_id": "svp-163",
       "set": { "id": "svp", "ptcgo_code": "PR-SV", "name": "Scarlet & Violet Black Star Promos", "number": "163" },
       "rarity": "Promo",
       "cardmarket_id": 796939,
       "reverse_holo": false,
       "first_edition": false,
+      "possible_variants": null,
       "special_variant": null,
-      "prices": { "cardmarket": { "trend": 3.59, "low": 1, "avg7": 3.71, "avg30": 4.1, "currency": "EUR" } },
+      "price_basis": "normal",
+      "prices": {
+        "cardmarket": { "trend": 3.84, "low": 1, "avg7": 3.87, "avg30": 3.87, "currency": "EUR" },
+        "cardmarket_normal": { "trend": 3.84, "low": 1, "avg7": 3.87, "avg30": 3.87, "currency": "EUR" },
+        "cardmarket_reverse": { "trend": null, "low": null, "avg7": null, "avg30": null, "currency": "EUR" },
+        "tcgplayer": { "market": 5.03, "currency": "USD" }
+      },
       "images": {
         "small": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163_small.webp",
         "large": "https://d1m1gwcombja0u.cloudfront.net/public_images/cards_en/svp/svp-163.png"
@@ -105,13 +113,24 @@ Recorded response for [examples/images/example_api_single.jpg](examples/images/e
       "confidence": 0.85,
       "image_quality": { "blurred": false, "unusual_dimensions": false },
       "alternatives": [
-        { "name": "Cinderace ex", "set": "Stellar Crown", "number": "28", "score": 1, "possible_variants": null }
-      ]
+        { "name": "Cinderace ex", "set": "Stellar Crown", "number": "28", "score": 1, "possible_variants": null, "card_id": "sv7-28", "cardmarket_id": 785881 }
+      ],
+      "graded": null,
+      "card_index": 0,
+      "review": { "needed": false, "reasons": [], "search": null }
     }
   ],
-  "demo": { "limit_per_day": 10, "remaining_today": 9 }
+  "demo": { "limit_per_day": 10, "remaining_today": 9 },
+  "correction": {
+    "request_id": "req_745cfd72-7f1c-4e4c-94d3-91e2485b8b2d",
+    "until": "2026-11-12T17:52:33.487Z",
+    "endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/corrections",
+    "search_endpoint": "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search"
+  }
 }
 ```
+
+The alternative Stellar Crown 28 has score 1 while the match has confidence 0.85. Score and confidence are different scales, so compare the set number printed on the card, not these two numbers. See [Integration guide](#integration-guide-for-coding-agents).
 
 (Shortened; the full recording is in [examples/responses/pokemon_single_cinderace.json](examples/responses/pokemon_single_cinderace.json).) For the 9 card binder page in [example_api_multi.jpg](examples/images/example_api_multi.jpg) the API returns every card in `cards`, one entry each.
 
@@ -129,20 +148,24 @@ More recordings:
 | `request_id` | ID of the request, quote it in support questions. |
 | `count` | Number of detected cards. |
 | `cards[]` | One object per detected card (see below). |
+| `correction` | `request_id`, `until`, `search_endpoint` (correction search, first step) and `endpoint` (corrections, second step), when the detection can be corrected for free. |
 | `credits.remaining` | Remaining card scans of your key's plan (own keys only). |
 | `demo` | Public demo key only, instead of credits: `limit_per_day` and `remaining_today` for your network. |
+| `card_id` | Our stable card id (Pokémon for example `svp-163`). Use it to correct, look up or store the card. |
+| `card_index` | Position of the card in this detection. A correction names the card by `request_id` and `card_index`. |
 | `name` | Card name as printed. |
 | `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
 | `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon` or `football`. Absent for Pokémon. |
 | `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
 | `rarity` | Rarity as named by the game. |
-| `cardmarket_id` | Cardmarket product ID, or null. |
-| `prices.cardmarket` | `trend`, `low`, `avg7`, `avg30` in EUR, updated daily. |
+| `cardmarket_id` | Cardmarket product ID, or null. Pokémon: the product of the version `prices.cardmarket` describes. |
+| `prices.cardmarket` | `trend`, `low`, `avg7`, `avg30` in EUR, updated daily. Pokémon: the price of the version the card is (see `price_basis`). |
 | `prices.tcgplayer` | TCGplayer prices in USD, where available. |
 | `images` | `small` and `large` reference image URLs. |
-| `confidence` | 0 to 1. |
+| `confidence` | 0 to 1, a fixed step per match method, not a probability. Below 0.85 the card has review reason `low_confidence`. |
 | `image_quality` | `blurred`, `unusual_dimensions` (booleans about the photo). |
-| `alternatives[]` | Other likely matches for a manual pick. The shape differs per game. |
+| `alternatives[]` | Other likely matches for a manual pick. The shape differs per game. A `score` is a similarity inside this search, another scale than `confidence`: never pick an alternative by score alone. |
+| `review` | `needed`, `reasons` (for example `low_confidence`, `visual_mismatch`, `card_back`, `blurred`) and `search` (a ready correction search body, or null). Accept the card when `needed` is false. |
 
 A missing price is `null`, never `0`.
 
@@ -150,7 +173,7 @@ A missing price is `null`, never `0`.
 
 | Game | Fields |
 |---|---|
-| Pokémon | `name_ja`, `name_ko`, `name_zh`, `reverse_holo`, `first_edition`, `special_variant` |
+| Pokémon | `name_ja`, `name_ko`, `name_zh`, `reverse_holo`, `first_edition`, `special_variant`, `possible_variants` (versions with an integer `cardmarket_id` and `price` with `low`, `trend`, `avg7`, `avg30`, `updatedAt`; `lowPrice` and `trendPrice` deprecated), `price_basis` (`normal`, `reverse_holo`, `first_edition`, `special_variant`), `prices.cardmarket_normal` (the plain card), `prices.cardmarket_reverse` (reverse holo family), `prices.tcgplayer.market` (USD) |
 | One Piece | `card_id` (for example `OP01-003`) |
 | Disney Lorcana | `version`, `full_name`, `name_en`, `prices.cardmarket_foil` |
 | Yu-Gi-Oh! TCG | `passcode`, `set.code`, `edition`, `price_versions`, `*_unconfirmed` flags (for example `print_unconfirmed`: the exact print could not be confirmed, check `alternatives`) |
@@ -184,14 +207,15 @@ Errors return JSON with `error` (a code) and usually `message`.
 * Images: JPEG or PNG, at most 12 MB (football 4 MB). All seven trading card games: several cards per photo (binder pages work; Pokémon best up to about 20), one game per photo. Football: one card per photo.
 * One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football card about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
-* Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card; images without a card are not charged.
+* Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card, also for a low-confidence best guess; card backs, images without a card and cards with a visual mismatch (review reason `visual_mismatch`) are not charged.
 * The API identifies cards. It does not grade card condition.
 
 ## Card search and corrections
 
 Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All seven trading card games and football.
 
-* **Correct a detection (free):** every detected card has `card_index`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `request_id`, `card_index` and `q` (a card name, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card.
+* **Correct a detection (free):** every detected card has `card_index` and `review`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `{"request_id": correction.request_id, ...card.review.search}` (or your own `q`, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card, 500 correction searches and 1000 corrections per account per day.
+* **Pokémon versions:** add `cardmarket_id` to the correction (the card's own, its 1st Edition product or a `possible_variants[].cardmarket_id` of that card, else `400 unsupported_cardmarket_id`) to pick a version, and `reverse_holo` (`true` or `false`) for a reverse holo copy. `prices.cardmarket` is then that version's price; `price_basis` says which. The lookup takes the same as `?cardmarket_id=` and `&reverse_holo=true`.
 * **Card search (paid):** `POST /search` with `tcg` and `q` (or `set` + `number`), optional `language` and `limit` (up to 10). `GET /cards/{tcg}/{card_id}` returns one card, for example to refresh a price. 0.5 credits per call that returns a card, from the same balance as detection; no result is free. An `Idempotency-Key` header makes a repeat free. Daily limit per plan; the demo key allows 10 searches and 3 lookups per day per network.
 
 ```bash
@@ -206,6 +230,34 @@ curl -X POST https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search 
 **Football:** `{"tcg": "football", "q": "kane chrome 2023"}`, text only (the player, optionally with set or season words), no `language`, no prices yet. Each result carries `ref`; `GET /cards/football/{card_id}?ref=...` (same key, within 24 hours) returns the card with all parallels of its subset and their print runs. Without a valid `ref` the lookup is 400 and free. Football detections cannot be corrected yet.
 
 Details: https://neosatoshi.com/developers/detection-api#card-search
+
+## Integration guide for coding agents
+
+The recommended bulk loop:
+
+1. `POST /detectApi` with one photo. Keep `request_id` and `correction`.
+2. For each card in `cards`: if `review.needed` is false, accept it.
+3. Otherwise check it: read the set number on the photo, or show the card to a person.
+4. If it is wrong, correct it: correction search (`POST /cardsApi/search` with `{"request_id": correction.request_id, ...card.review.search, "number": "<read on the photo>"}`), then `POST /cardsApi/corrections` with `request_id`, `card_index` and `card_id`. Both free.
+5. Store `card_id`, `cardmarket_id` and `price_basis` with the card.
+
+**Confidence and score.** `confidence` is a fixed step per match method, not a probability. Pokémon: 0.99 direct match, 0.95 number matched, 0.90 direct match (later step), 0.85 number matched (later step), 0.80 direct match (last step), 0.59 best guess. Japanese, Korean and Chinese cards have their own steps (0.99 down to 0.60). `alternatives[].score` is the similarity of a candidate inside this search, another scale. A German Gallopa 189 came back at 0.85 with the alternative Gallopa 30 at score 0.90, and 189 was right. Never pick an alternative by score alone; take one only when its set number matches the card.
+
+**Review reasons.** `low_confidence`: check the set number. `blurred`, `unusual_dimensions`: check the card, a sharper photo helps. `visual_mismatch`, `no_match`: correct or drop (a visual mismatch is not charged). `card_back`: skip (not charged). `variant_price_missing`: the version has no own Cardmarket price, check the price. `print_unconfirmed`, `rarity_unconfirmed`, `version_unconfirmed`, `number_unconfirmed`, `art_unconfirmed`: a person picks the printing. `graded_label_mismatch`: show the slab to a person. Football `not_sure`, `parallel_unconfirmed`: a person confirms. Treat an unknown reason as needing review.
+
+**Special versions and reverse holo (Pokémon).** `prices.cardmarket` is the price of the version the card is; `price_basis` says which (`normal`, `reverse_holo`, `first_edition`, `special_variant`). `prices.cardmarket_normal` is always the plain card, `prices.cardmarket_reverse` the reverse holo family. The photo does not tell which `possible_variants` entry a copy is: a person picks, and you send that entry's `cardmarket_id` with the same `card_id` in the correction. A reverse holo copy: `"reverse_holo": true`. `first_edition` comes from the detection and is kept; only Base Set has its own 1st Edition price.
+
+**Limits.** 30 requests per minute per key for search, lookup and corrections (429 `rate_limited`, `Retry-After` 60). Correction window 24 hours. 5 correction searches and 3 corrections per card; 500 correction searches and 1000 corrections per account per day (429 `daily_cap_reached`, `Retry-After` until midnight UTC). A correction search returns at most 5 cards. Paid search and lookup: 0.5 credits each, only when a card is returned, with daily limits per plan. Exports: 200 per day, at most 20 `request_ids`.
+
+**Idempotency and retries.** Send an `Idempotency-Key` header (8 to 100 characters of `A-Z a-z 0-9 : _ -`) on paid search and lookup: a repeat within 24 hours is answered from storage and not charged (`Idempotent-Replayed: true`); another body under the same key is 422 `idempotency_key_reuse`, a call still running 409 `idempotency_in_progress`. Retry 429 after `Retry-After` and 502, 503, 504 with backoff; never retry other 4xx. A retried detection is a new detection and is charged when it succeeds, so retry only after an error answer.
+
+**Errors of search, lookup and corrections.** 400 `invalid_json`, `invalid_card_index`, `invalid_card_id`, `invalid_query`, `unsupported_language`, `unsupported_tcg`, `unsupported_cardmarket_id`, `correction_not_available_for_tcg`, `query_too_broad`, `invalid_idempotency_key`; 401 `missing_api_key`, `invalid_api_key`; 402 `out_of_credits`; 403 `feature_not_enabled`, `request_not_yours`, `paid_search_not_enabled`; 404 `unknown_request_id`, `card_not_found`; 409 `idempotency_in_progress`; 410 `correction_window_closed`; 422 `idempotency_key_reuse`; 429 `rate_limited`, `daily_cap_reached`, `correction_budget_exhausted`, `correction_limit_reached`; 502 `lookup_failed`, `search_failed`; 503 `cards_api_disabled`, `limiter_unavailable`, `billing_unavailable`.
+
+Runnable: `python3 examples/python/detect.py photo.jpg pokemon --review` (standard library only) or `node examples/node/detect.mjs photo.jpg pokemon --review` asks for the set number of every card that needs review and corrects it.
+
+## Changelog
+
+* **2026-11-11 (OpenAPI 1.15.0):** Pokémon `prices.cardmarket` and `cardmarket_id` now describe the version the card is (picked version, detected special variant, 1st Edition, reverse holo, else the plain card; before: always the plain card). New `price_basis`, `prices.cardmarket_normal`, `prices.cardmarket_reverse`, `prices.tcgplayer`. `possible_variants[].cardmarket_id` is always an integer (before sometimes a digit string); `possible_variants[].price` has `low` and `trend`, `lowPrice` and `trendPrice` are deprecated. Corrections and the lookup take `cardmarket_id` (400 `unsupported_cardmarket_id` for an id of another card) and `reverse_holo`; exports use them. Corrected German, French, Spanish and Italian Pokémon cards keep their localized name. New `review` on every card and `correction.search_endpoint`. Docs: confidence steps vs score, billing of best guesses, 1000 corrections per day.
 
 ## When to use this instead of a general vision LLM
 
@@ -232,10 +284,10 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 | Path | Contents |
 |---|---|
 | [examples/curl/detect.sh](examples/curl/detect.sh) | Bash and curl, summary via `jq` if installed |
-| [examples/python/detect.py](examples/python/detect.py) | Python with `requests` |
+| [examples/python/detect.py](examples/python/detect.py) | Python, standard library only; `--review` runs the correction step |
 | [examples/python/stream.py](examples/python/stream.py), [examples/node/stream.mjs](examples/node/stream.mjs), [examples/curl/stream.sh](examples/curl/stream.sh) | Streaming: each card as soon as it is recognised |
 | [examples/python/batch_to_csv.py](examples/python/batch_to_csv.py) | Process a folder, write a CSV (name, set, number, rarity, language, cardmarket_id, Cardmarket trend) |
-| [examples/node/detect.mjs](examples/node/detect.mjs) | Node.js 18+, built-in `fetch`, no dependencies |
+| [examples/node/detect.mjs](examples/node/detect.mjs) | Node.js 18+, built-in `fetch`, no dependencies; `--review` runs the correction step |
 | [examples/images/](examples/images/) | Test photos (testing the API only) |
 | [examples/responses/](examples/responses/) | Recorded API responses |
 | [mcp-server/](mcp-server/) | MCP server (TypeScript) |
@@ -276,7 +328,7 @@ One card usually takes about 4 seconds, about 10 to 12 seconds on the first requ
 Yes. With `"stream": true` each card arrives as a Server-Sent Event as soon as it is recognised. It helps with binder pages; see [Streaming](#streaming).
 
 **What does it cost?**
-One credit per detected card, from the plan's monthly card scans. Images without a card are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.
+One credit per detected card, from the plan's monthly card scans, also for a low-confidence best guess. Card backs, images without a card and visual mismatches are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.
 
 **Can I send an image URL instead of base64?**
 Yes, send `"image_url": "https://..."` instead of `"image"`. The URL must be public https and point to a JPEG or PNG of at most 12 MB.

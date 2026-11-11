@@ -8,7 +8,7 @@ Columns: file, name, set, number, rarity, language, cardmarket_id, cardmarket_tr
 
 Uses NEOSATOSHI_API_KEY, or the public demo key (only 10 detections per day per network,
 so use your own key for real batches). Images run one after another; each call is synchronous.
-Only dependency: requests (pip install requests). detect.py must sit next to this file.
+Standard library only. detect.py must sit next to this file.
 """
 
 import csv
