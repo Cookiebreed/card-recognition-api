@@ -3,7 +3,7 @@
   "name": "io.github.Cookiebreed/card-recognition-mcp",
   "title": "NeoSatoshi Card Recognition",
   "description": "Identify trading and football cards in a photo, search and correct them, with Cardmarket prices.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "websiteUrl": "https://neosatoshi.com/developers/detection-api",
   "repository": {
     "url": "https://github.com/Cookiebreed/card-recognition-api",
@@ -15,7 +15,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "neosatoshi-card-mcp",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "transport": {
         "type": "stdio"
       },

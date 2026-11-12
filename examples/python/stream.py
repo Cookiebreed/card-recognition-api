@@ -5,9 +5,9 @@ Usage:
     python3 stream.py <image_url> [tcg]
 
     image_url: public https link to a JPEG or PNG
-    tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, football
+    tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk, football
 
-Streaming helps with binder pages (all six trading card games). Football has one card
+Streaming helps with binder pages (all eight trading card games). Football has one card
 per photo, so there you get progress events, not a faster result.
 
 Uses NEOSATOSHI_API_KEY, or the public demo key (10 detections per day per network).

@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition MCP server
 
-MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
+MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
 
 * Transport: stdio
 * npm package: `neosatoshi-card-mcp`, binary `neosatoshi-card-mcp`
@@ -15,7 +15,7 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 | `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB (football 4 MB). `~` is expanded. |
 | `image_url` | string | Public `https://` URL of a JPEG or PNG. Forwarded to the API as is; the server never downloads it. |
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
-| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `football` |
+| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football` |
 
 | `include_images` | boolean | Also return the catalog image of up to 10 recognised cards (from our CDN, at most 4 MB together), so the assistant can compare them with the photo. Default `false`. |
 
@@ -38,6 +38,19 @@ alternative arts apart, `print_unconfirmed` is true, `card_id` is `dg-c-<number>
 come as alternatives, each with its price, to pick with `correct_card`. Cardmarket prices (EUR) for English and Japanese
 printings, TCGplayer (USD) for English only. Older Digimon products (the 1999 card game, the 2000 trading cards) are not
 recognised.
+
+Cyberpunk TCG line (the printing id follows the set; `Beta` marks a Beta (Kickstarter) printing, `foil` a foil one):
+
+```
+1. Floor It | Welcome to Night City Beta (WNCB) #B132 | WNCB-132 Beta | Common | en | Cardmarket 905220 | trend 0.08 EUR | TCGplayer 0.12 USD | confidence 1
+```
+
+Cyberpunk TCG (`cyberpunk`, by WeirdCo), English and French. Beta and Retail base cards share the same art, only the β
+before the number tells them apart, and their prices differ a lot. When the photo cannot tell them apart, `print_unconfirmed`
+is true, `card_id` is `cp-c-<card_key>` without a price, and the printings come as alternatives, each with its price, to
+pick with `correct_card`. The finish is fixed per printing (`finish`, `is_foil`: Rare and above are foil). Cardmarket prices
+(EUR) for English and French cards (a French card takes the price of the same Cardmarket product), TCGplayer (USD) for
+English only.
 
 Football line (no prices yet, the parallel is a suggestion a person should confirm):
 

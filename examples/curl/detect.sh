@@ -2,7 +2,7 @@
 # Detect the trading cards in one photo with the NeoSatoshi card recognition API.
 #
 # Usage: ./detect.sh <image.jpg|image.png> [tcg] [--raw]
-#   tcg:   pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon
+#   tcg:   pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk
 #   --raw: print the full JSON response instead of the summary
 #
 # Uses NEOSATOSHI_API_KEY, or the public demo key (10 detections per day per network).

@@ -43,7 +43,7 @@ test("lists all tools", async () => {
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "football"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football"]);
   assert.match(rec.description, /football/);
   assert.ok(tools.find((t) => t.name === "get_card").inputSchema.properties.ref, "get_card takes the football ref");
 });
@@ -285,6 +285,104 @@ test("list_supported_games names Digimon with English and Japanese", async () =>
   const res = await client.callTool({ name: "list_supported_games", arguments: {} });
   assert.match(res.content[0].text, /Digimon Card Game.*tcg="digimon", languages en, ja, cards per photo: several/);
   assert.match(res.content[0].text, /Digimon: .*TCGplayer \(USD\) for English only/);
+});
+
+// Cyberpunk TCG card shape from the OpenAPI lookup example (GET /cardsApi/cards/cyberpunk/cp-WNCB-132), shortened.
+const cyberpunkCard = {
+  name: "Floor It",
+  name_en: "Floor It",
+  subtitle: null,
+  language: "en",
+  tcg: "cyberpunk",
+  card_key: "floor-it",
+  type: "Program",
+  color: "Blue",
+  cost: 1,
+  card_id: "cp-WNCB-132",
+  print_id: "WNCB-132",
+  set: { id: "WNCB", code: "WNCB", name: "Welcome to Night City Beta", number: "B132" },
+  rarity: "Common",
+  finish: "normal",
+  finishes: ["normal"],
+  is_foil: false,
+  beta: true,
+  cardmarket_id: 905220,
+  prices: {
+    cardmarket: { trend: 0.08, low: 0.02, avg7: 0.09, avg30: 0.09, currency: "EUR" },
+    tcgplayer: { market: 0.12, currency: "USD" },
+  },
+  print_unconfirmed: false,
+  number_unconfirmed: false,
+  art_unconfirmed: false,
+  confidence: 1,
+  image_quality: { blurred: false, unusual_dimensions: false },
+  alternatives: [],
+  graded: null,
+  review: { needed: false, reasons: [], search: null },
+};
+
+test("recognize_cards cyberpunk: sends tcg cyberpunk and summarizes the Beta printing and prices", async () => {
+  const calls = [];
+  const resp = { request_id: "req_cp1", count: 1, cards: [cyberpunkCard], credits: { remaining: 99 } };
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, resp, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "cyberpunk" } });
+  assert.equal(res.isError, undefined);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "cyberpunk", image: JPEG.toString("base64") });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /Floor It \| Welcome to Night City Beta \(WNCB\) #B132 \| WNCB-132 Beta \| Common \| en/);
+  assert.match(line, /Cardmarket 905220 \| trend 0\.08 EUR \| TCGplayer 0\.12 USD/);
+  assert.doesNotMatch(line, /foil/);
+});
+
+test("recognize_cards cyberpunk: a Retail printing has no Beta mark, a foil printing says foil", async () => {
+  // The same shape as a Retail foil printing (the finish is fixed per printing), only to check the summary.
+  const retailFoil = { ...cyberpunkCard, card_id: "cp-WNC-132", print_id: "WNC-132", set: { id: "WNC", code: "WNC", name: "Welcome to Night City", number: "132" }, beta: false, finish: "foil", finishes: ["foil"], is_foil: true };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_cp2", count: 1, cards: [retailFoil] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "cyberpunk" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /#132 \| WNC-132 \| Common/);
+  assert.doesNotMatch(line, /Beta/);
+  assert.match(line, /\| foil \|/);
+});
+
+test("recognize_cards cyberpunk: an open printing says so and offers the printings", async () => {
+  const open = {
+    ...cyberpunkCard,
+    language: "fr",
+    card_id: "cp-c-floor-it",
+    print_id: null,
+    set: { id: null, code: null, name: null, number: "132" },
+    beta: null,
+    cardmarket_id: null,
+    prices: { cardmarket: { trend: null, low: null, avg7: null, avg30: null, currency: "EUR" }, tcgplayer: null },
+    print_unconfirmed: true,
+    alternatives: [{ card_id: "cp-fr-WNC-132" }, { card_id: "cp-fr-WNCB-132" }],
+  };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_cp3", count: 1, cards: [open] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "cyberpunk" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /unconfirmed: print/);
+  assert.match(line, /2 alternatives/);
+  assert.doesNotMatch(line, /TCGplayer/);
+  assert.doesNotMatch(line, /Beta/);
+});
+
+test("cyberpunk search and lookup: set + number, a French name, get_card by printing id", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { card: cyberpunkCard }, calls));
+  await client.callTool({ name: "search_cards", arguments: { tcg: "cyberpunk", set: "WNCB", number: "B132" } });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "cyberpunk", set: "WNCB", number: "B132" });
+  await client.callTool({ name: "search_cards", arguments: { tcg: "cyberpunk", q: "floor it", language: "fr" } });
+  assert.deepEqual(JSON.parse(calls[1].init.body), { tcg: "cyberpunk", q: "floor it", language: "fr" });
+  await client.callTool({ name: "get_card", arguments: { tcg: "cyberpunk", card_id: "cp-WNCB-132" } });
+  assert.equal(calls[2].url, `${CARDS_API_BASE}/cards/cyberpunk/cp-WNCB-132`);
+});
+
+test("list_supported_games names Cyberpunk TCG with English and French", async () => {
+  const client = await connect({}, fakeFetch(200, sample, []));
+  const res = await client.callTool({ name: "list_supported_games", arguments: {} });
+  assert.match(res.content[0].text, /Cyberpunk TCG.*tcg="cyberpunk", languages en, fr, cards per photo: several/);
+  assert.match(res.content[0].text, /Cyberpunk TCG: .*Beta.*TCGplayer \(USD\) for English only/);
 });
 
 function sseFetch(events, calls) {

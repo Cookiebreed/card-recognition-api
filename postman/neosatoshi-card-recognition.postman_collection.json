@@ -259,6 +259,37 @@
           }
         },
         {
+          "name": "Detect Cyberpunk TCG (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"cyberpunk\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=cyberpunk (English and French cards)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (base64)",
           "request": {
             "method": "POST",
@@ -512,6 +543,37 @@
           }
         },
         {
+          "name": "Detect Cyberpunk TCG (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"cyberpunk\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=cyberpunk (English and French cards)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (image_url)",
           "request": {
             "method": "POST",
@@ -729,6 +791,38 @@
               ]
             },
             "description": "A Digimon card number alone is a query (BT1-025_P1 for one printing); add \"language\": \"ja\" for Japanese cards. Results are full card objects, each with its card_id (dg-... for a printing). 0.5 credits when a card comes back."
+          }
+        },
+        {
+          "name": "Search Cyberpunk TCG cards by set and number",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tcg\": \"cyberpunk\",\n  \"set\": \"WNCB\",\n  \"number\": \"B132\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "Set code with the printed number (WNCB with B132 or 132 finds the Beta printing, WNC with 132 the Retail one); a name in English or French also works as \"q\". Add \"language\": \"fr\" for French cards. Results are full card objects, each with its card_id (cp-... for a printing) and the beta flag. 0.5 credits when a card comes back."
           }
         },
         {
