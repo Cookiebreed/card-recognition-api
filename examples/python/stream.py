@@ -7,7 +7,7 @@ Usage:
     image_url: public https link to a JPEG or PNG
     tcg:       pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk, riftbound, football
 
-Streaming helps with binder pages (every trading card game except Riftbound). Football has one card
+Streaming helps with binder pages (all nine trading card games). Football has one card
 per photo, so there you get progress events, not a faster result.
 
 Uses NEOSATOSHI_API_KEY, or the public demo key (10 detections per day per network).
