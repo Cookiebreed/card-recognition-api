@@ -439,6 +439,16 @@ test("recognize_cards riftbound: sends tcg riftbound and summarizes the printing
   assert.doesNotMatch(line, /review needed/);
 });
 
+test("summary: only Riftbound prints the TCGplayer foil price, every other game's line is unchanged", async () => {
+  // a Pokemon card whose TCGplayer block happens to carry a foil field: the line must stay as before the Riftbound change
+  const other = { ...riftboundCard, tcg: "pokemon", print_id: null, card_id: "sv1-1", prices: { ...riftboundCard.prices } };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_pk1", count: 1, cards: [other] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /TCGplayer 0\.03 USD/);
+  assert.doesNotMatch(line, /TCGplayer foil/);
+});
+
 test("recognize_cards riftbound: a signed foil-only printing names its kind of print and says foil", async () => {
   // A Signature printing exists in foil only: no normal price, only the foil family (shape as mapCardRiftbound, prices only for the summary).
   const signed = {

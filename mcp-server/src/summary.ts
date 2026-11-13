@@ -109,7 +109,8 @@ export function summarizeCard(card: Obj, index: number, requestId: string | null
   if (foilTrend) parts.push(`foil trend ${foilTrend}`);
   const tcgp = fmtPrice(card.prices?.tcgplayer, "market");
   if (tcgp) parts.push(`TCGplayer ${tcgp}`);
-  const tcgpFoil = fmtPrice(card.prices?.tcgplayer, "foil");
+  // Riftbound only: Common / Uncommon carry a normal and a foil family; every other game's line stays as it was
+  const tcgpFoil = card.tcg === "riftbound" ? fmtPrice(card.prices?.tcgplayer, "foil") : null;
   if (tcgpFoil) parts.push(`TCGplayer foil ${tcgpFoil}`);
   const g = graded(card);
   if (g) parts.push(g);
