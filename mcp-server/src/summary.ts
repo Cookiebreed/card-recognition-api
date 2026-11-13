@@ -72,6 +72,13 @@ function summarizeFootball(card: Obj, index: number, requestId: string | null): 
   return parts.join(" | ");
 }
 
+/** Riftbound: the printing id with its kind of print ("OGN-299* Signature"); a signed print (star) without a variant says "signed". */
+function riftboundPrint(card: Obj): string {
+  const variant = typeof card.variant === "string" && card.variant ? card.variant : null;
+  const signed = !variant && String(card.print_id).endsWith("*");
+  return variant ? `${card.print_id} ${variant}` : signed ? `${card.print_id} signed` : card.print_id;
+}
+
 export function summarizeCard(card: Obj, index: number, requestId: string | null = null): string {
   if (card.tcg === "football") return summarizeFootball(card, index, requestId);
   const name = card.full_name ?? card.name ?? "(unknown)";
@@ -84,6 +91,7 @@ export function summarizeCard(card: Obj, index: number, requestId: string | null
   if (card.card_id && card.tcg === "onepiece") parts.push(card.card_id);
   if (card.tcg === "digimon" && card.print_id) parts.push(card.variant ? `${card.print_id} ${card.variant}` : card.print_id);
   if (card.tcg === "cyberpunk" && card.print_id) parts.push(card.beta === true ? `${card.print_id} Beta` : card.print_id);
+  if (card.tcg === "riftbound" && card.print_id) parts.push(riftboundPrint(card));
   if (card.passcode) parts.push(`passcode ${card.passcode}`);
   if (card.rarity) parts.push(card.rarity);
   if (card.language) parts.push(card.language);
@@ -101,6 +109,8 @@ export function summarizeCard(card: Obj, index: number, requestId: string | null
   if (foilTrend) parts.push(`foil trend ${foilTrend}`);
   const tcgp = fmtPrice(card.prices?.tcgplayer, "market");
   if (tcgp) parts.push(`TCGplayer ${tcgp}`);
+  const tcgpFoil = fmtPrice(card.prices?.tcgplayer, "foil");
+  if (tcgpFoil) parts.push(`TCGplayer foil ${tcgpFoil}`);
   const g = graded(card);
   if (g) parts.push(g);
   if (typeof card.confidence === "number") parts.push(`confidence ${card.confidence}`);

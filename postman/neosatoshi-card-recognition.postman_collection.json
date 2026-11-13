@@ -290,6 +290,37 @@
           }
         },
         {
+          "name": "Detect Riftbound (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"riftbound\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (max 12 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=riftbound (English prints are priced; French and Chinese prints are recognized without a price). Detection only: the card search, lookup and corrections do not cover Riftbound (400 unsupported_tcg)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (base64)",
           "request": {
             "method": "POST",
@@ -574,6 +605,37 @@
           }
         },
         {
+          "name": "Detect Riftbound (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"riftbound\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (max 12 MB), fetched by the API. Set the collection variable imageUrl. tcg=riftbound (English prints are priced; French and Chinese prints are recognized without a price). Detection only: the card search, lookup and corrections do not cover Riftbound (400 unsupported_tcg)."
+          }
+        },
+        {
           "name": "Detect Football (soccer) cards (image_url)",
           "request": {
             "method": "POST",
@@ -639,7 +701,7 @@
     },
     {
       "name": "Card search",
-      "description": "Card search and lookup (paid: 0.5 credits per call that returns a card, never on the demo key) and free corrections of a detection. Docs: https://neosatoshi.com/developers/detection-api#card-search",
+      "description": "Card search and lookup (paid: 0.5 credits per call that returns a card, never on the demo key) and free corrections of a detection. Docs: https://neosatoshi.com/developers/detection-api#card-search Riftbound is not covered (detection only: tcg riftbound is 400 unsupported_tcg here, and a Riftbound detection cannot be corrected).",
       "item": [
         {
           "name": "Search Pokémon cards",

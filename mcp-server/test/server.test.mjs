@@ -43,7 +43,7 @@ test("lists all tools", async () => {
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "riftbound", "football"]);
   assert.match(rec.description, /football/);
   assert.ok(tools.find((t) => t.name === "get_card").inputSchema.properties.ref, "get_card takes the football ref");
 });
@@ -383,6 +383,169 @@ test("list_supported_games names Cyberpunk TCG with English and French", async (
   const res = await client.callTool({ name: "list_supported_games", arguments: {} });
   assert.match(res.content[0].text, /Cyberpunk TCG.*tcg="cyberpunk", languages en, fr, cards per photo: several/);
   assert.match(res.content[0].text, /Cyberpunk TCG: .*Beta.*TCGplayer \(USD\) for English only/);
+});
+
+// Riftbound card shape from the documentation example (VEN-001, functions/shared/detectCardMapping.js mapCardRiftbound), shortened.
+const riftboundCard = {
+  name: "Baccai Sandspinner",
+  name_en: "Baccai Sandspinner",
+  subtitle: null,
+  language: "en",
+  tcg: "riftbound",
+  card_key: "baccai-sandspinner",
+  type: "Unit",
+  domain: ["Fury"],
+  cost: 6,
+  card_id: "rb-VEN-001",
+  print_id: "VEN-001",
+  set: { id: "VEN", code: "VEN", name: "Vendetta", number: "001" },
+  rarity: "Common",
+  variant: null,
+  finish: "normal",
+  finishes: ["normal", "foil"],
+  is_foil: false,
+  double_sided: false,
+  cardmarket_id: 897877,
+  prices: {
+    cardmarket: { trend: 0.04, low: 0.02, avg7: 0.06, avg30: 0.05, currency: "EUR" },
+    cardmarket_foil: { trend: 0.12, low: 0.02, avg7: 0.09, avg30: 0.1, currency: "EUR" },
+    tcgplayer: { market: 0.03, foil: 0.15, currency: "USD" },
+  },
+  print_unconfirmed: false,
+  number_unconfirmed: false,
+  print_source: "line",
+  art_unconfirmed: false,
+  confidence: 0.95,
+  image_quality: { blurred: false, unusual_dimensions: false },
+  alternatives: [],
+  graded: null,
+  card_index: 0,
+  review: { needed: false, reasons: [], search: null },
+};
+const noPrice = { trend: null, low: null, avg7: null, avg30: null, currency: "EUR" };
+
+test("recognize_cards riftbound: sends tcg riftbound and summarizes the printing and both finish prices", async () => {
+  const calls = [];
+  const resp = { request_id: "req_rb1", count: 1, cards: [riftboundCard], credits: { remaining: 99 } };
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, resp, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "riftbound" } });
+  assert.equal(res.isError, undefined);
+  assert.equal(calls[0].url, API_ENDPOINT);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "riftbound", image: JPEG.toString("base64") });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /Baccai Sandspinner \| Vendetta \(VEN\) #001 \| VEN-001 \| Common \| en \| Cardmarket 897877/);
+  assert.match(line, /trend 0\.04 EUR \| foil trend 0\.12 EUR \| TCGplayer 0\.03 USD \| TCGplayer foil 0\.15 USD/);
+  assert.doesNotMatch(line, /\| foil \|/);
+  assert.doesNotMatch(line, /review needed/);
+});
+
+test("recognize_cards riftbound: a signed foil-only printing names its kind of print and says foil", async () => {
+  // A Signature printing exists in foil only: no normal price, only the foil family (shape as mapCardRiftbound, prices only for the summary).
+  const signed = {
+    ...riftboundCard, name: "Kai'Sa, Daughter of the Void", card_key: "kaisa-daughter-of-the-void", card_id: "rb-OGN-299*", print_id: "OGN-299*",
+    set: { id: "OGN", code: "OGN", name: "Origins", number: "299*" }, rarity: "Showcase", variant: "Signature", finish: "foil", finishes: ["foil"], is_foil: true, cardmarket_id: null,
+    prices: { cardmarket: noPrice, cardmarket_foil: { trend: 300, low: 250, avg7: 310, avg30: 320, currency: "EUR" }, tcgplayer: { market: null, foil: 280, currency: "USD" } },
+  };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_rb2", count: 1, cards: [signed] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "riftbound" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /Origins \(OGN\) #299\* \| OGN-299\* Signature \| Showcase \| en \| foil \| Cardmarket n\/a \| foil trend 300 EUR \| TCGplayer foil 280 USD/);
+  assert.doesNotMatch(line, /\| trend /);
+  assert.doesNotMatch(line, /TCGplayer null/);
+  // Without a variant, the star alone still marks the signed print.
+  const bare = { ...signed, variant: null };
+  const res2 = await (await connect({}, fakeFetch(200, { request_id: "req_rb3", count: 1, cards: [bare] }, []))).callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "riftbound" } });
+  assert.match(res2.content[0].text.split("\n")[1], /\| OGN-299\* signed \|/);
+});
+
+test("recognize_cards riftbound: a French print has no price and says language not listed, with no correction hint", async () => {
+  const french = {
+    ...riftboundCard, language: "fr", card_id: "rb-fr-VEN-001",
+    prices: { cardmarket: noPrice, cardmarket_foil: noPrice, tcgplayer: { market: null, foil: null, currency: "USD" } },
+    review: { needed: true, reasons: ["language_not_listed"], search: null },
+  };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_rb4", count: 1, cards: [french] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "riftbound" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /\| VEN-001 \| Common \| fr \| Cardmarket 897877/);
+  assert.match(line, /review needed: language not listed/);
+  assert.doesNotMatch(line, /trend|TCGplayer/);
+  assert.doesNotMatch(line, /search_cards/);
+});
+
+test("recognize_cards riftbound: an open printing says so and lists the printings", async () => {
+  const open = {
+    ...riftboundCard,
+    card_id: "rb-c-baccai-sandspinner",
+    print_id: null,
+    set: { id: "VEN", code: "VEN", name: null, number: "001" },
+    rarity: null, variant: null, finish: null, finishes: [], is_foil: null, double_sided: null, cardmarket_id: null,
+    prices: { cardmarket: noPrice, cardmarket_foil: noPrice, tcgplayer: { market: null, foil: null, currency: "USD" } },
+    print_unconfirmed: true,
+    print_source: null,
+    alternatives: [{ card_id: "rb-VEN-001" }, { card_id: "rb-VEN-001a" }],
+    review: { needed: true, reasons: ["print_unconfirmed"], search: null },
+  };
+  const client = await connect({}, fakeFetch(200, { request_id: "req_rb5", count: 1, cards: [open] }, []));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "riftbound" } });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /unconfirmed: print/);
+  assert.match(line, /2 alternatives/);
+  assert.match(line, /Cardmarket n\/a/);
+  assert.doesNotMatch(line, /trend|TCGplayer|search_cards/);
+});
+
+test("recognize_folder takes tcg riftbound", async () => {
+  const folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nsmcp-rb-")));
+  try {
+    fs.writeFileSync(path.join(folder, "a.jpg"), JPEG);
+    const calls = [];
+    const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { request_id: "req_rb6", count: 1, cards: [riftboundCard] }, calls));
+    const res = await client.callTool({ name: "recognize_folder", arguments: { folder, tcg: "riftbound", output: "json" } });
+    assert.equal(res.isError, undefined);
+    assert.equal(calls.length, 1);
+    assert.equal(JSON.parse(calls[0].init.body).tcg, "riftbound");
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+});
+
+test("search_cards and get_card do not offer riftbound and refuse it without a call", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { card: riftboundCard }, calls));
+  const { tools } = await client.listTools();
+  for (const name of ["search_cards", "get_card"]) {
+    const t = tools.find((x) => x.name === name);
+    assert.deepEqual(t.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football"]);
+    assert.match(t.description, /Not for Riftbound/);
+  }
+  assert.match(tools.find((x) => x.name === "correct_card").description, /Riftbound detections cannot be corrected/);
+  assert.match(tools.find((x) => x.name === "recognize_cards").description, /Riftbound \(tcg "riftbound".*detection only/);
+  const attempts = [
+    { name: "search_cards", arguments: { tcg: "riftbound", q: "baccai sandspinner" } },
+    { name: "get_card", arguments: { tcg: "riftbound", card_id: "rb-VEN-001" } },
+  ];
+  for (const a of attempts) {
+    let refused = false;
+    try {
+      const res = await client.callTool(a);
+      refused = res.isError === true;
+    } catch {
+      refused = true; // an SDK that throws on invalid arguments refuses too
+    }
+    assert.ok(refused, `${a.name} refuses tcg riftbound`);
+  }
+  assert.equal(calls.length, 0, "no API call for a refused game");
+});
+
+test("list_supported_games names Riftbound as detection only with its price rules", async () => {
+  const client = await connect({}, fakeFetch(200, sample, []));
+  const res = await client.callTool({ name: "list_supported_games", arguments: {} });
+  const text = res.content[0].text;
+  assert.match(text, /Riftbound \(.*detection only, not in the card search\): tcg="riftbound", languages en, fr and zh \(recognized, no price\), cards per photo: several/);
+  assert.match(text, /Riftbound: detection only: search_cards, get_card and correct_card do not cover Riftbound .*language_not_listed/);
+  assert.match(text, /Card search: .*not for Riftbound/);
+  assert.equal(res.structuredContent.games.find((g) => g.tcg === "riftbound").cards_per_photo, "several (binder pages work)");
 });
 
 function sseFetch(events, calls) {

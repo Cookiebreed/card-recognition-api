@@ -2,7 +2,7 @@
 // Detect the trading cards in one photo with the NeoSatoshi card recognition API.
 //
 // Usage: node detect.mjs <image.jpg|image.png> [tcg] [--json] [--review]
-//   tcg:      pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk
+//   tcg:      pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk, riftbound
 //   --json:   also print the full JSON response
 //   --review: for every card with review.needed, ask for the set number printed on the card and
 //             correct the card when it differs (correction search + correction, both free)
@@ -17,7 +17,7 @@ import { pathToFileURL } from "node:url";
 const ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
 const CARDS_API = "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi";
 const DEMO_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274";
-const TCGS = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk"];
+const TCGS = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "riftbound"];
 
 // Card search API call (correction search, corrections). Retries 429 after Retry-After and 502/503/504 with backoff.
 async function cardsApi(path, body, apiKey = process.env.NEOSATOSHI_API_KEY || DEMO_KEY) {
@@ -60,7 +60,7 @@ export async function reviewCards(result) {
       if (!review.needed) { out.push(card); continue; }
       console.log(`Card ${card.card_index}: ${card.name} #${card.set?.number} needs review (${(review.reasons ?? []).join(", ")})`);
       if (!review.search || !result.correction) {
-        console.log("  cannot be corrected here (card back, football or no correction window)");
+        console.log("  cannot be corrected here (card back, football, Riftbound or no correction window)");
         out.push(card);
         continue;
       }

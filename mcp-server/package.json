@@ -1,7 +1,7 @@
 {
   "name": "neosatoshi-card-mcp",
-  "version": "0.9.0",
-  "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards from a photo, with set, number, rarity, Cardmarket ID and daily prices, and search the card catalog.",
+  "version": "0.10.0",
+  "description": "MCP server for the NeoSatoshi card recognition API: identify Pokemon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, Riftbound and football (soccer) cards from a photo, with set, number, rarity, Cardmarket ID and daily prices, and search the card catalog.",
   "mcpName": "io.github.Cookiebreed/card-recognition-mcp",
   "type": "module",
   "bin": {
@@ -40,6 +40,8 @@
     "digimon-card-game",
     "cyberpunk",
     "cyberpunk-tcg",
+    "riftbound",
+    "riftbound-tcg",
     "football-cards",
     "soccer-cards",
     "sports-cards",

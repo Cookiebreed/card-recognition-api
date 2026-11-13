@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiError, cardsApi, detect, detectStream, resolveApiKey, scrub, type DetectBody } from "./api.js";
 import { cardImages, MAX_IMAGES } from "./cardImages.js";
-import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
+import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SEARCH_TCG_VALUES, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
 import { InputError, normalizeBase64Image, parseAllowedDirs, readImageFile, validateImageUrl } from "./images.js";
 import { summarize } from "./summary.js";
 import { csvRows, listImages, resolveFolder, stamp, toCsv, writeNew } from "./folder.js";
@@ -17,12 +17,13 @@ export interface ServerOptions {
 
 const RECOGNIZE_DESCRIPTION = [
   "Identify trading cards in a photo with the NeoSatoshi card recognition API.",
-  "Games: Pokémon (default), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game (English, Japanese) and Cyberpunk TCG (English, French), several cards per photo (binder pages work, one game per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
+  "Games: Pokémon (default), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game (English, Japanese), Cyberpunk TCG (English, French) and Riftbound (English; French and Chinese prints recognized without a price; one card per photo for now), several cards per photo (binder pages work, one game per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
   "Returns per card: name, language, set, number, rarity, Cardmarket product ID, daily Cardmarket prices in EUR (TCGplayer USD where available), confidence and alternatives.",
   "Football cards instead: the player, release (set, number), season, subset, teams, rookie flag, a sure flag, alternatives and the parallel (three candidates with print runs, a pick only when the recognizer is sure; a person should confirm it). No prices and no images for football yet; it takes about 6 to 25 seconds.",
   "Digimon (tcg \"digimon\"): recognised by card number and name; alternative arts share the number, so the printing comes from the picture or stays open (print_unconfirmed) with the printings as alternatives. TCGplayer prices only for English Digimon printings. Older Digimon products (the 1999 card game, the 2000 trading cards) are not recognised.",
   "Cyberpunk TCG (tcg \"cyberpunk\"): Beta (Kickstarter) and Retail base cards share the same art, only the β before the number tells them apart (beta flag, print_id WNCB-132 vs WNC-132), and their prices differ a lot; when the photo cannot tell, the printing stays open (print_unconfirmed) with the printings as alternatives. The finish is fixed per printing (finish, is_foil). TCGplayer prices only for English Cyberpunk cards.",
-  "Graded slabs (PSA, BGS, CGC, for football also SGC) fill graded with the grade read from the label. It does not grade card condition.",
+  "Riftbound (tcg \"riftbound\", the League of Legends TCG by Riot Games): detection only, search_cards, get_card and correct_card do not cover it. The printing is the set code + printed number (print_id OGN-066, OGN-066a alternate art, OGN-299* signed; variant Overnumbered, Signature, Prize Wall or Best Of); when the photo cannot tell it, the printing stays open (print_unconfirmed, card_id rb-c-<card_key>, no price) with the printings as priced alternatives to pick yourself. Common and Uncommon exist normal and foil (finish says normal: take prices.cardmarket_foil and prices.tcgplayer.foil for a foil copy), Rare and above foil only. French and Chinese prints (rb-fr-..., rb-zh-...) have no price (review reason language_not_listed).",
+  "Graded slabs (PSA, BGS, CGC, for football also SGC; not Riftbound yet) fill graded with the grade read from the label. It does not grade card condition.",
   "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB, football 4 MB), image_url (public https URL, forwarded to the API) or image_base64.",
   "Uses the API key in NEOSATOSHI_API_KEY; without it, the public demo key is used (10 detections per day per network).",
   "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; with a progress token the cards are reported one by one while a binder page is read.",
@@ -34,19 +35,21 @@ const SEARCH_DESCRIPTION = [
   "Use it first to fix a wrong detection: pass request_id and card_index from recognize_cards. That correction search is free (5 searches per detected card within 24 hours, at most 5 results), then call correct_card.",
   "Without request_id it is the paid card search: 0.5 credits when it returns a card, nothing for no result.",
   "Query: q (a card name, at least 3 letters, optionally with the number like \"charizard 4/102\", or a printed code like OP01-003; Digimon: a card number alone like BT1-025 works; Cyberpunk: a name in English or French, or a printed number like B132), or set + number (Cyberpunk: set WNCB with number B132 or 132). Wildcards and set-only or number-only queries are refused.",
+  "Not for Riftbound: it is detection only (the API answers 400 unsupported_tcg), and a Riftbound detection cannot be corrected.",
   "Football (tcg \"football\"): q only, the player with optional set or season words (\"kane chrome 2023\"), no language, set or number, no prices yet; each result carries a ref for get_card. Football detections cannot be corrected yet.",
 ].join(" ");
 
 const CORRECT_DESCRIPTION = [
   "Correct a card of a detection to the right catalog card. Free, within 24 hours of the detection, 3 times per card, only for the API key that made the detection.",
   "card_id comes from a correction search result or from the detected card's alternatives. Returns the full corrected card. Corrections also improve the recognition.",
-  "Yu-Gi-Oh!: card_id is the passcode, set the printed code (LOB-EN001) to pick a printing. Magic: card_id is the oracle_id with set + number for the printing. One Piece: cardmarket_id picks a parallel. Pokémon: cardmarket_id of one of the card's possible_variants picks that special version (its price comes back), reverse_holo says whether the copy is a reverse holo. Digimon: card_id is a printing id (dg-BT1-025_P1, dg-ja-BT1-025_P1) or dg-c-<number> while the printing is open. Cyberpunk: card_id is a printing id (cp-WNC-132, the Beta cp-WNCB-132, French cp-fr-WNC-132) or cp-c-<card_key> while the printing is open.",
+  "Yu-Gi-Oh!: card_id is the passcode, set the printed code (LOB-EN001) to pick a printing. Magic: card_id is the oracle_id with set + number for the printing. One Piece: cardmarket_id picks a parallel. Pokémon: cardmarket_id of one of the card's possible_variants picks that special version (its price comes back), reverse_holo says whether the copy is a reverse holo. Digimon: card_id is a printing id (dg-BT1-025_P1, dg-ja-BT1-025_P1) or dg-c-<number> while the printing is open. Cyberpunk: card_id is a printing id (cp-WNC-132, the Beta cp-WNCB-132, French cp-fr-WNC-132) or cp-c-<card_key> while the printing is open. Riftbound detections cannot be corrected (detection only): pick a printing from the card's alternatives yourself.",
 ].join(" ");
 
 const GET_DESCRIPTION = [
   "Get one card by its card_id (for example to refresh its price or resolve a stored id). 0.5 credits when the card exists, nothing for an unknown card.",
   "For a wrong detection use search_cards with request_id and correct_card instead: those are free.",
   "Football: pass the ref of a search_cards result (same API key, within 24 hours); the card then comes with all parallels of its subset and their print runs. Without a valid ref the call is refused and free.",
+  "Not for Riftbound (detection only).",
 ].join(" ");
 
 const EXPORT_DESCRIPTION = [
@@ -92,7 +95,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         tcg: z
           .enum(TCG_VALUES)
           .optional()
-          .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards."),
+          .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards. riftbound for Riftbound (detection only)."),
         include_images: z
           .boolean()
           .optional()
@@ -280,7 +283,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       inputSchema: {
         request_id: z.string().optional().describe("request_id of a detection: makes this a free correction search."),
         card_index: z.number().int().min(0).optional().describe("cards[].card_index of the card to correct (with request_id)."),
-        tcg: z.enum(TCG_VALUES).optional().describe("Game. Required without request_id; default with it: the detected card's game."),
+        tcg: z.enum(SEARCH_TCG_VALUES).optional().describe("Game. Required without request_id; default with it: the detected card's game. Riftbound is not in the card search."),
         q: z.string().optional().describe("Card name (at least 3 letters), optionally with the number, or a printed code (Digimon: a card number like BT1-025; Cyberpunk: a printed number like B132). Football: the player, optionally with set or season words."),
         set: z.string().optional().describe("Set id or code, together with number (Digimon: the set code, e.g. BT1 with number 025; Cyberpunk: e.g. WNCB with number B132 or 132)."),
         number: z.string().optional().describe("Card number, together with set (or q)."),
@@ -318,7 +321,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       title: "Get one card by id",
       description: GET_DESCRIPTION,
       inputSchema: {
-        tcg: z.enum(TCG_VALUES).describe("Game of the card."),
+        tcg: z.enum(SEARCH_TCG_VALUES).describe("Game of the card. Riftbound is not in the card search."),
         card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key; Digimon: dg-... printing id, dg-c-<number> or the bare number BT1-025; Cyberpunk: cp-... printing id, cp-c-<card_key> or the bare card key v-streetkid; football: fb-...)."),
         ref: z.string().optional().describe("Football only, required there: the ref of the search_cards result for this card_id (valid 24 hours)."),
         language: LANGUAGE,
@@ -442,6 +445,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         `Demo key: ${g.limits.demo_key}. Billing: ${g.limits.billing}.`,
         `Digimon: ${g.limits.digimon}.`,
         `Cyberpunk TCG: ${g.limits.cyberpunk}.`,
+        `Riftbound: ${g.limits.riftbound}.`,
         `Football: ${g.limits.football}.`,
         `Card search: ${g.limits.card_search}.`,
         `Not supported: ${g.not_supported.join(", ")}. Docs: ${g.docs}`,

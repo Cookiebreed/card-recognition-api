@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition API
 
-Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices (football: player, release and parallel).
+Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, Riftbound and football (soccer) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices (football: player, release and parallel).
 
 This repository contains runnable examples (curl, Python, Node.js), an MCP server for AI assistants, a Postman collection and a copy of the OpenAPI spec. The API is run by [NeoSatoshi](https://neosatoshi.com) (NeoGen Solutions GmbH, Bern, Switzerland).
 
@@ -60,6 +60,7 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 | Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | Several (binder pages work) |
 | Digimon Card Game | `digimon` | English, Japanese | Several (binder pages work) |
 | Cyberpunk TCG | `cyberpunk` | English, French | Several (binder pages work) |
+| Riftbound (detection only, see below) | `riftbound` | English (French and Chinese prints are recognized, without a price) | One per photo for now |
 | Football (soccer) cards: Topps, Panini and other makers | `football` | (no card language) | One, the card front, at most 4 MB |
 
 ## Request
@@ -74,7 +75,7 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 |---|---|---|
 | `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB (football: 4 MB). |
 | `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
-| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk` or `football`. |
+| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `riftbound` or `football`. |
 | `stream` | no | `true` for Server-Sent Events, see [Streaming](#streaming). The header `Accept: text/event-stream` does the same. |
 
 ## Response
@@ -156,7 +157,7 @@ More recordings:
 | `card_index` | Position of the card in this detection. A correction names the card by `request_id` and `card_index`. |
 | `name` | Card name as printed. |
 | `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
-| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk` or `football`. Absent for Pokémon. |
+| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `riftbound` or `football`. Absent for Pokémon. |
 | `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
 | `rarity` | Rarity as named by the game. |
 | `cardmarket_id` | Cardmarket product ID, or null. Pokémon: the product of the version `prices.cardmarket` describes. |
@@ -181,9 +182,10 @@ A missing price is `null`, never `0`.
 | Magic: The Gathering | printing (`set.code`, `set.number`, `print_unconfirmed`), `prices.cardmarket_foil`, TCGplayer foil price (`prices.tcgplayer.foil`) |
 | Digimon Card Game | `card_key` (the card number, for example `BT1-025`), `print_id` (the printing, for example `BT1-025_P1`), `name_en`, `type`, `level`, `colors`, `set.code`, `variant` (`Alternative Art`), `parallel_index`, `finishes`, `print_unconfirmed`, `number_unconfirmed`. `card_id` is `dg-<print_id>` for an English printing, `dg-ja-<print_id>` for a Japanese one and `dg-c-<number>` while the printing is open (then no price; the printings come as `alternatives`, each priced). Cardmarket prices for English and Japanese printings, TCGplayer for English only. |
 | Cyberpunk TCG | `card_key` (the card, for example `v-streetkid`, one card in English and French), `print_id` (set code and printed number without the β, for example `WNC-132`; the Beta `WNCB-132` has the same art), `subtitle`, `name_en`, `type`, `color`, `cost`, `set.code`, `set.number` (as printed: `132`, `B132` on a Beta, `004a`), `finish` (`normal` or `foil`, fixed per printing: Rare and above are foil), `finishes`, `is_foil`, `beta`, `print_unconfirmed`, `number_unconfirmed`. `card_id` is `cp-<print_id>` for an English printing, `cp-fr-<print_id>` for a French one and `cp-c-<card_key>` while the printing is open (then no price; the printings come as `alternatives`, each priced). Cardmarket prices (EUR) for English and French cards (a French card takes the price of the same Cardmarket product), TCGplayer (USD) for English only. |
+| Riftbound | `card_key` (the card, for example `kaisa-daughter-of-the-void`, one card in every printing), `print_id` (set code and printed number, for example `OGN-066`, `OGN-066a` alternate art, `OGN-299*` signed, `VEN-R02` rune, `UNL-T02-T05` a double-sided token), `subtitle`, `name_en`, `type`, `domain` (a list), `cost`, `set.code`, `set.number` (as printed, a string: `066`, `066a`, `299*`, `T02 // T05`), `variant` (`Overnumbered`, `Signature`, `Prize Wall`, `Best Of` or null), `finishes` (`["normal", "foil"]` for Common and Uncommon, `["foil"]` for Rare and above, `["normal"]` for runes, tokens and metal cards), `finish` and `is_foil` (a printing with both finishes says `normal`: the photo does not tell them apart), `double_sided`, `prices.cardmarket` (normal finish), `prices.cardmarket_foil` (foil finish), `prices.tcgplayer` (`market` normal, `foil` foil), `print_unconfirmed`, `number_unconfirmed`, `print_source`. `card_id` is `rb-<print_id>` for an English printing, `rb-fr-<print_id>` or `rb-zh-<print_id>` for a French or Chinese print and `rb-c-<card_key>` while the printing is open (then no price; the printings come as `alternatives`, each priced). A finish the printing does not exist in has no price. English prints only are priced: a French or Chinese print has no price and review reason `language_not_listed`. Review reason `partial_read`: only the number or only the rules text was read, the card keeps its printing and price but is no proven match. Detection only: no card search, lookup or corrections, `review.search` is always null. |
 | Football | `card_id` (`fb-...`), `season`, `subset`, `teams`, `rookie`, `card_type`, `sure`, `score`, `parallel` (`pick` only when the recognizer is sure, `candidates` with `print_run`, `serial_number`). `prices` and `images` are null: no football prices in the API yet, and no reference images. |
 
-Graded slabs: a photo of a PSA, BGS or CGC slab (football also SGC) fills `graded` with the grader, the grade and the cert number as read from the label; `null` for a raw card. The grade is never estimated.
+Graded slabs: a photo of a PSA, BGS or CGC slab (football also SGC; not Riftbound yet) fills `graded` with the grader, the grade and the cert number as read from the label; `null` for a raw card. The grade is never estimated.
 
 The full field reference is in the [documentation](https://neosatoshi.com/developers/detection-api).
 
@@ -206,7 +208,7 @@ Errors return JSON with `error` (a code) and usually `message`.
 
 ## Limits and pricing
 
-* Images: JPEG or PNG, at most 12 MB (football 4 MB). All eight trading card games: several cards per photo (binder pages work; Pokémon best up to about 20), one game per photo. Football: one card per photo.
+* Images: JPEG or PNG, at most 12 MB (football 4 MB). Every trading card game except Riftbound: several cards per photo (binder pages work; Pokémon best up to about 20), one game per photo. Riftbound and football: one card per photo.
 * One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football card about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card, also for a low-confidence best guess; card backs, images without a card and cards with a visual mismatch (review reason `visual_mismatch`) are not charged.
@@ -214,7 +216,7 @@ Errors return JSON with `error` (a code) and usually `message`.
 
 ## Card search and corrections
 
-Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All eight trading card games and football.
+Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All trading card games except Riftbound, and football: Riftbound is answered by the detection only (`"tcg": "riftbound"` in search, lookup or corrections is `400 unsupported_tcg`, and a Riftbound detection cannot be corrected).
 
 * **Correct a detection (free):** every detected card has `card_index` and `review`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `{"request_id": correction.request_id, ...card.review.search}` (or your own `q`, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card, 500 correction searches and 1000 corrections per account per day.
 * **Pokémon versions:** add `cardmarket_id` to the correction (the card's own, its 1st Edition product or a `possible_variants[].cardmarket_id` of that card, else `400 unsupported_cardmarket_id`) to pick a version, and `reverse_holo` (`true` or `false`) for a reverse holo copy. `prices.cardmarket` is then that version's price; `price_basis` says which. The lookup takes the same as `?cardmarket_id=` and `&reverse_holo=true`. One Piece picks a parallel by `cardmarket_id`; Lorcana, Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon and Cyberpunk TCG pick a printing by `card_id` or `set` + `number` and refuse a `cardmarket_id` that does not belong to the card (`400 unsupported_cardmarket_id`).
@@ -261,6 +263,7 @@ Runnable: `python3 examples/python/detect.py photo.jpg pokemon --review` (standa
 
 ## Changelog
 
+* **2026-11-13 (OpenAPI 1.17.0):** Riftbound (`"tcg": "riftbound"`) in detection only; the card search, the lookup and corrections do not cover it (`400 unsupported_tcg`), so its `review.search` is always null. English prints are priced; French and Chinese prints are recognized without a price (new review reason `language_not_listed`). `card_id` `rb-<print_id>`, `rb-fr-<print_id>`, `rb-zh-<print_id>` or `rb-c-<card_key>`; new fields for it: `domain`, `double_sided`, `print_source`.
 * **2026-11-12 (OpenAPI 1.16.0):** Cyberpunk TCG (`"tcg": "cyberpunk"`, English and French) in detection, card search, lookup and corrections. New fields for it: `beta`, `finish`, `is_foil`, `cost`, `color`; `card_id` `cp-<print_id>`, `cp-fr-<print_id>` or `cp-c-<card_key>`.
 * **2026-11-11 (OpenAPI 1.15.0):** Pokémon `prices.cardmarket` and `cardmarket_id` now describe the version the card is (picked version, detected special variant, 1st Edition, reverse holo, else the plain card; before: always the plain card). New `price_basis`, `prices.cardmarket_normal`, `prices.cardmarket_reverse`, `prices.tcgplayer`. `possible_variants[].cardmarket_id` is always an integer (before sometimes a digit string); `possible_variants[].price` has `low` and `trend`, `lowPrice` and `trendPrice` are deprecated. Corrections and the lookup take `cardmarket_id` (400 `unsupported_cardmarket_id` for an id of another card) and `reverse_holo`; exports use them. Corrected German, French, Spanish and Italian Pokémon cards keep their localized name. New `review` on every card and `correction.search_endpoint`. Docs: confidence steps vs score, billing of best guesses, 1000 corrections per day.
 
@@ -276,7 +279,7 @@ If you only need a rough description of a photo, a general vision LLM may be eno
 
 ## MCP server (Claude, Cursor, Codex and other AI assistants)
 
-[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same file the NeoSatoshi website exports: custom CSV/JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV, free), `list_export_presets` and `list_supported_games`, for all eight trading card games and football. It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
+[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same file the NeoSatoshi website exports: custom CSV/JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV, free), `list_export_presets` and `list_supported_games`, for all nine trading card games and football (Riftbound: detection only, not in `search_cards`, `get_card` and `correct_card`). It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
 
 ```bash
 claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp
@@ -306,7 +309,7 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
 
 **Can it recognise several cards in one photo?**
-Yes, in all eight trading card games: binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football cards: one card per photo.
+Yes, in every trading card game except Riftbound (one card per photo for now): binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football cards: one card per photo.
 
 **Does it return prices?**
 Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`. Football cards have no prices in the API yet.
@@ -325,6 +328,9 @@ Yes, the Digimon Card Game in English and Japanese, with `"tcg": "digimon"`: rec
 
 **Does it recognise Cyberpunk TCG cards?**
 Yes, the Cyberpunk TCG by WeirdCo in English and French, with `"tcg": "cyberpunk"`: several cards per photo, graded slabs (PSA, BGS, CGC) with the grade read from the label. Beta (Kickstarter) and Retail base cards share the same art, only the β before the number tells them apart, and their prices differ a lot: `beta` says which one it is, and when the photo cannot tell, the printing stays open with the printings as alternatives to pick. The finish is fixed per printing (`finish`, `is_foil`). Cardmarket prices (EUR) for English and French cards, TCGplayer (USD) for English only.
+
+**Does it recognise Riftbound cards?**
+Yes, Riftbound, the League of Legends trading card game by Riot Games, with `"tcg": "riftbound"`: one card per photo for now, slab labels are not read yet. English prints are priced: Common and Uncommon exist normal and foil, so the card comes with both price families (`prices.cardmarket` and `prices.cardmarket_foil`, TCGplayer `market` and `foil`); Rare and above are foil only. When the photo cannot tell an alternate art, overnumbered, signed or promo printing from the base card, the printing stays open with the printings as alternatives, each priced, to pick yourself. French and Chinese prints are recognized but have no price (review reason `language_not_listed`). Riftbound is detection only: the card search, the lookup and corrections do not cover it.
 
 **Does it support Yu-Gi-Oh! OCG (Asian) cards?**
 No, only the TCG in English, German, French, Italian, Spanish and Portuguese.

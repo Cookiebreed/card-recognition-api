@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition MCP server
 
-MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
+MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, Riftbound and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog (every game but Riftbound, which is detection only).
 
 * Transport: stdio
 * npm package: `neosatoshi-card-mcp`, binary `neosatoshi-card-mcp`
@@ -15,7 +15,7 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 | `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB (football 4 MB). `~` is expanded. |
 | `image_url` | string | Public `https://` URL of a JPEG or PNG. Forwarded to the API as is; the server never downloads it. |
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
-| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football` |
+| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `riftbound`, `football` |
 
 | `include_images` | boolean | Also return the catalog image of up to 10 recognised cards (from our CDN, at most 4 MB together), so the assistant can compare them with the photo. Default `false`. |
 
@@ -52,6 +52,23 @@ pick with `correct_card`. The finish is fixed per printing (`finish`, `is_foil`:
 (EUR) for English and French cards (a French card takes the price of the same Cardmarket product), TCGplayer (USD) for
 English only.
 
+Riftbound line (the printing id follows the set, with its kind of print when it has one: `OGN-299* Signature`,
+`Overnumbered`, `Prize Wall`, `Best Of`, or `signed` for a starred number; `foil` marks a foil printing; a Common or
+Uncommon shows both price families):
+
+```
+1. Baccai Sandspinner | Vendetta (VEN) #001 | VEN-001 | Common | en | Cardmarket 897877 | trend 0.04 EUR | foil trend 0.12 EUR | TCGplayer 0.03 USD | TCGplayer foil 0.15 USD | confidence 0.95
+```
+
+Riftbound (`riftbound`, the League of Legends TCG by Riot Games) is detection only: `search_cards`, `get_card` and
+`correct_card` do not cover it (the API answers `400 unsupported_tcg`, so the tools do not offer it), and its
+`review.search` is always null. English prints are priced. Common and Uncommon exist normal and foil: `finish` says
+`normal` (the photo does not tell them apart), take `prices.cardmarket_foil` and `prices.tcgplayer.foil` for a foil copy;
+Rare and above are foil only. When the photo cannot tell an alternate art, overnumbered, signed or promo printing from the
+base card, `print_unconfirmed` is true, `card_id` is `rb-c-<card_key>` without a price, and the printings come as
+alternatives, each with its price, to pick yourself. French and Chinese prints are recognized (`rb-fr-...`, `rb-zh-...`)
+without a price, review reason `language_not_listed`.
+
 Football line (no prices yet, the parallel is a suggestion a person should confirm):
 
 ```
@@ -83,10 +100,13 @@ them it is the paid card search: 0.5 credits when it returns a card.
 Football: `{"tcg": "football", "q": "kane chrome 2023"}`, only `q` (the player, optionally with set or season words), no
 `language`, `set` or `number`, no prices yet. Each result carries `ref` for `get_card`.
 
+Not for Riftbound (detection only): its `tcg` enum leaves `riftbound` out.
+
 ### `correct_card`
 
 Correct a detected card to the right catalog card (`card_id` from a correction search or from the card's
-alternatives). Free, within 24 hours, 3 times per card, only for the key that made the detection.
+alternatives). Free, within 24 hours, 3 times per card, only for the key that made the detection. Riftbound detections
+cannot be corrected.
 
 ### `get_card`
 
@@ -94,7 +114,7 @@ One card by its `card_id`, for example to refresh a price. 0.5 credits when the 
 use `search_cards` with `request_id` and `correct_card` instead, both free.
 
 Football: pass `ref` from the `search_cards` result (same key, within 24 hours). The card then comes with all parallels
-of its subset and their print runs. Without a valid `ref` the call is refused and free.
+of its subset and their print runs. Without a valid `ref` the call is refused and free. Not for Riftbound.
 
 ### `export_cards`
 

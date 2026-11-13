@@ -4,7 +4,7 @@
 Usage:
     python3 detect.py <image.jpg|image.png> [tcg] [--json] [--review]
 
-    tcg:      pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk
+    tcg:      pokemon (default), onepiece, lorcana, yugioh, magic, star_wars_unlimited, digimon, cyberpunk, riftbound
     --json:   also print the full JSON response
     --review: for every card with review.needed, ask for the set number printed on the card and
               correct the card when it differs (correction search + correction, both free)
@@ -24,7 +24,7 @@ import urllib.request
 ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi"
 CARDS_API = "https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi"
 DEMO_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274"
-TCGS = ("pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk")
+TCGS = ("pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "riftbound")
 RETRY_STATUSES = (429, 502, 503, 504)
 
 
@@ -94,7 +94,7 @@ def review_cards(result):
         number_now = (card.get("set") or {}).get("number")
         print(f"Card {card.get('card_index')}: {card.get('name')} #{number_now} needs review ({', '.join(review.get('reasons', []))})")
         if not review.get("search") or not result.get("correction"):
-            print("  cannot be corrected here (card back, football or no correction window)")
+            print("  cannot be corrected here (card back, football, Riftbound or no correction window)")
             out.append(card)
             continue
         number = input("  Set number printed on the card (Enter keeps the match): ").strip()
