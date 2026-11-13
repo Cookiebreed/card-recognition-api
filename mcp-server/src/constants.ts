@@ -1,7 +1,7 @@
 // Facts about the NeoSatoshi card recognition API that the server relies on.
 
 export const SERVER_NAME = "neosatoshi-card-recognition";
-export const SERVER_VERSION = "0.9.0";
+export const SERVER_VERSION = "0.10.0";
 
 /** The detection endpoint. */
 export const API_ENDPOINT = "https://europe-west1-neosatoshi.cloudfunctions.net/detectApi";
@@ -17,11 +17,21 @@ export const DEMO_API_KEY = "nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f
 
 export const REQUEST_TIMEOUT_MS = 120_000;
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-/** Football photos go to their own recognizer, which takes at most 4 MB. */
+/** Football and basketball photos go to their own recognizer, which takes at most 4 MB. */
 export const FOOTBALL_MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
-export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football"] as const;
+export const TCG_VALUES = ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football", "basketball"] as const;
 export type Tcg = (typeof TCG_VALUES)[number];
+
+/** Sports cards (football, basketball): own recognizer, player instead of a card name, no prices, no images, no corrections. */
+export function isSport(tcg: unknown): boolean {
+  return tcg === "football" || tcg === "basketball";
+}
+
+/** The image size limit for a game. */
+export function maxImageBytes(tcg: unknown): number {
+  return isSport(tcg) ? FOOTBALL_MAX_IMAGE_BYTES : MAX_IMAGE_BYTES;
+}
 
 export const SUPPORTED_GAMES = {
   games: [
@@ -53,7 +63,13 @@ export const SUPPORTED_GAMES = {
       tcg: "football",
       name: "Football (soccer) cards: Topps, Panini and other makers",
       languages: ["none (football cards have no card language)"],
-      cards_per_photo: "one (the card front, at most 4 MB)",
+      cards_per_photo: "several card fronts (binder pages work, best up to about 20 cards; at most 4 MB)",
+    },
+    {
+      tcg: "basketball",
+      name: "Basketball cards: NBA and EuroLeague, Panini and Topps",
+      languages: ["none (basketball cards have no card language)"],
+      cards_per_photo: "several card fronts (binder pages work, best up to about 20 cards; at most 4 MB)",
     },
   ],
   limits: {
@@ -63,13 +79,15 @@ export const SUPPORTED_GAMES = {
     demo_key: "10 detections per day per network, no signup",
     billing: "own keys: one credit per detected card; images without a card are not charged",
     football:
-      "player, release (set, number), season, subset, teams, rookie flag and the suggested parallel with print run; no prices and no images yet; about 6 to 25 seconds per photo; 5 football photos in progress per key",
+      "player, release (set, number), season, subset, teams, rookie flag and the suggested parallel with print run; no prices and no images yet; about 6 to 25 seconds per photo; 5 football or basketball photos in progress per key",
+    basketball:
+      "works like football (same fields, card_id bk-...); NBA cards from Panini and Topps, mainly seasons 2018-19 to 2026-27 plus some older releases, and Panini EuroLeague sets from 2023-24; not WNBA, college, G League or NBL",
     digimon:
       "recognised by card number and name; alternative arts share the number, the printing comes from the picture or is picked from the alternatives (print_unconfirmed); Cardmarket prices (EUR) for English and Japanese printings, TCGplayer (USD) for English only",
     cyberpunk:
       "Beta (Kickstarter) and Retail base cards share the same art, only the β before the number tells them apart (beta flag), and their prices differ a lot; when the photo cannot tell, the printing is picked from the alternatives (print_unconfirmed); finish fixed per printing (Rare and above foil); Cardmarket prices (EUR) for English and French cards, TCGplayer (USD) for English only",
     card_search:
-      "search_cards and get_card: 0.5 credits per call that returns a card, nothing for no result; correction searches and correct_card are free; demo key: 10 searches and 3 lookups per day per network; football lookups need the ref of a search result (24 hours)",
+      "search_cards and get_card: 0.5 credits per call that returns a card, nothing for no result; correction searches and correct_card are free; demo key: 10 searches and 3 lookups per day per network; football and basketball lookups need the ref of a search result (24 hours)",
   },
   not_supported: ["card condition grading"],
   docs: "https://neosatoshi.com/developers/detection-api",

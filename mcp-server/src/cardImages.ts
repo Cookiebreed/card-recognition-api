@@ -1,6 +1,6 @@
 // Reference images of recognised cards as MCP image content, so the assistant can compare them with the user's photo.
 // Opt-in (include_images), only from our own card image CDN, at most MAX_IMAGES small images of at most 1 MB each.
-// Football cards have no reference images.
+// Football and basketball cards have no reference images.
 
 export const CARD_IMAGE_HOST = "d1m1gwcombja0u.cloudfront.net";
 export const MAX_IMAGES = 10;

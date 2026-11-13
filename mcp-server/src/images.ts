@@ -1,5 +1,5 @@
 // Image input handling with the safety checks the server promises:
-// regular files only, symlinks resolved, JPEG or PNG by magic bytes, 12 MB cap (4 MB for football),
+// regular files only, symlinks resolved, JPEG or PNG by magic bytes, 12 MB cap (4 MB for football and basketball),
 // optional directory allowlist (NEOSATOSHI_ALLOWED_DIRS). Nothing here touches the network.
 
 import { constants as fsConstants, promises as fs } from "node:fs";

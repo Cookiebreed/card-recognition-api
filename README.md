@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition API
 
-Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices (football: player, release and parallel).
+Card recognition API for Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, football (soccer) and basketball (NBA, EuroLeague) cards: send a photo, get JSON with set, number, rarity, Cardmarket ID and daily prices (football and basketball: player, release and parallel).
 
 This repository contains runnable examples (curl, Python, Node.js), an MCP server for AI assistants, a Postman collection and a copy of the OpenAPI spec. The API is run by [NeoSatoshi](https://neosatoshi.com) (NeoGen Solutions GmbH, Bern, Switzerland).
 
@@ -38,7 +38,7 @@ All scripts read `NEOSATOSHI_API_KEY` and fall back to the demo key.
 
 ## Streaming
 
-Add `"stream": true` to get Server-Sent Events: each card as soon as it is recognised, then the same result as a normal call, at the same cost. On a Pokémon binder page with 9 cards the first card came after about 6 seconds and all nine after about 17. Football (one card per photo) gets progress events, not a faster result.
+Add `"stream": true` to get Server-Sent Events: each card as soon as it is recognised, then the same result as a normal call, at the same cost. On a Pokémon binder page with 9 cards the first card came after about 6 seconds and all nine after about 17. Football and basketball binder pages stream the same way.
 
 ```bash
 ./examples/curl/stream.sh https://neosatoshi.com/static/images/example_api_multi.jpg
@@ -60,7 +60,8 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 | Star Wars: Unlimited | `star_wars_unlimited` | English, German, French, Italian, Spanish | Several (binder pages work) |
 | Digimon Card Game | `digimon` | English, Japanese | Several (binder pages work) |
 | Cyberpunk TCG | `cyberpunk` | English, French | Several (binder pages work) |
-| Football (soccer) cards: Topps, Panini and other makers | `football` | (no card language) | One, the card front, at most 4 MB |
+| Football (soccer) cards: Topps, Panini and other makers | `football` | (no card language) | Several card fronts (binder pages work, best up to about 20), at most 4 MB |
+| Basketball cards: NBA (Panini, Topps; mainly 2018-19 to 2026-27) and Panini EuroLeague (from 2023-24); not WNBA, college, G League, NBL | `basketball` | (no card language) | Several card fronts (binder pages work, best up to about 20), at most 4 MB |
 
 ## Request
 
@@ -72,9 +73,9 @@ Events: `accepted`, `progress`, `card` (`index`, `card`), then exactly one of `d
 
 | Field | Required | Description |
 |---|---|---|
-| `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB (football: 4 MB). |
+| `image` | one of `image` or `image_url` | Base64 encoded JPEG or PNG, at most 12 MB (football and basketball: 4 MB). |
 | `image_url` | one of `image` or `image_url` | Public `https://` URL of a JPEG or PNG, at most 12 MB, fetched by the API. Alternative to `image`. |
-| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk` or `football`. |
+| `tcg` | no | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football` or `basketball`. |
 | `stream` | no | `true` for Server-Sent Events, see [Streaming](#streaming). The header `Accept: text/event-stream` does the same. |
 
 ## Response
@@ -156,7 +157,7 @@ More recordings:
 | `card_index` | Position of the card in this detection. A correction names the card by `request_id` and `card_index`. |
 | `name` | Card name as printed. |
 | `language` | Card language: `en`, `de`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh`. |
-| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk` or `football`. Absent for Pokémon. |
+| `tcg` | `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football` or `basketball`. Absent for Pokémon. |
 | `set` | `id`, `ptcgo_code` (Pokémon, One Piece, Lorcana) or `code` (Yu-Gi-Oh!, Magic), `name`, `number`. |
 | `rarity` | Rarity as named by the game. |
 | `cardmarket_id` | Cardmarket product ID, or null. Pokémon: the product of the version `prices.cardmarket` describes. |
@@ -182,8 +183,9 @@ A missing price is `null`, never `0`.
 | Digimon Card Game | `card_key` (the card number, for example `BT1-025`), `print_id` (the printing, for example `BT1-025_P1`), `name_en`, `type`, `level`, `colors`, `set.code`, `variant` (`Alternative Art`), `parallel_index`, `finishes`, `print_unconfirmed`, `number_unconfirmed`. `card_id` is `dg-<print_id>` for an English printing, `dg-ja-<print_id>` for a Japanese one and `dg-c-<number>` while the printing is open (then no price; the printings come as `alternatives`, each priced). Cardmarket prices for English and Japanese printings, TCGplayer for English only. |
 | Cyberpunk TCG | `card_key` (the card, for example `v-streetkid`, one card in English and French), `print_id` (set code and printed number without the β, for example `WNC-132`; the Beta `WNCB-132` has the same art), `subtitle`, `name_en`, `type`, `color`, `cost`, `set.code`, `set.number` (as printed: `132`, `B132` on a Beta, `004a`), `finish` (`normal` or `foil`, fixed per printing: Rare and above are foil), `finishes`, `is_foil`, `beta`, `print_unconfirmed`, `number_unconfirmed`. `card_id` is `cp-<print_id>` for an English printing, `cp-fr-<print_id>` for a French one and `cp-c-<card_key>` while the printing is open (then no price; the printings come as `alternatives`, each priced). Cardmarket prices (EUR) for English and French cards (a French card takes the price of the same Cardmarket product), TCGplayer (USD) for English only. |
 | Football | `card_id` (`fb-...`), `season`, `subset`, `teams`, `rookie`, `card_type`, `sure`, `score`, `parallel` (`pick` only when the recognizer is sure, `candidates` with `print_run`, `serial_number`). `prices` and `images` are null: no football prices in the API yet, and no reference images. |
+| Basketball | The same fields as football; `card_id` `bk-...`. No prices and no images yet. |
 
-Graded slabs: a photo of a PSA, BGS or CGC slab (football also SGC) fills `graded` with the grader, the grade and the cert number as read from the label; `null` for a raw card. The grade is never estimated.
+Graded slabs: a photo of a PSA, BGS or CGC slab (football and basketball also SGC) fills `graded` with the grader, the grade and the cert number as read from the label; `null` for a raw card. The grade is never estimated.
 
 The full field reference is in the [documentation](https://neosatoshi.com/developers/detection-api).
 
@@ -193,28 +195,28 @@ Errors return JSON with `error` (a code) and usually `message`.
 
 | HTTP | `error` | Meaning |
 |---|---|---|
-| 400 | `missing_image`, `bad_image`, `image_too_large`, `unsupported_image`, `unsupported_tcg` | Fix the request. Only JPEG and PNG up to 12 MB (football 4 MB). |
+| 400 | `missing_image`, `bad_image`, `image_too_large`, `unsupported_image`, `unsupported_tcg` | Fix the request. Only JPEG and PNG up to 12 MB (football and basketball 4 MB). |
 | 400 | `bad_image_url`, `image_url_fetch_failed` | Only with `image_url`: the URL is invalid or could not be fetched. |
 | 401 | `missing_api_key`, `invalid_api_key` | Check the `Authorization` header. |
 | 402 | `out_of_credits` | The plan has no card scans left. |
 | 405 | `method_not_allowed` | Only `POST`. |
-| 422 | `no_card_detected`, `unreadable_image` (football) | No card recognised. Not charged. |
-| 429 | `rate_limited`, `demo_limit_reached`, `football_busy` | Slow down, or the demo key's 10 per day per network are used up, or the key already has 5 football photos in progress (`Retry-After`). |
+| 422 | `no_card_detected`, `unreadable_image` (football, basketball) | No card recognised. Not charged. |
+| 429 | `rate_limited`, `demo_limit_reached`, `football_busy` | Slow down, or the demo key's 10 per day per network are used up, or the key already has 5 football or basketball photos in progress (`Retry-After`). |
 | 502 | (backend step failed) | Retry. |
-| 503 | `football_daily_limit`, `football_unavailable`, `football_busy` | Football only: the daily football capacity is used up (`resets_at`), or the recognizer is unavailable or busy. Not charged; the other games still work. |
+| 503 | `football_daily_limit`, `football_unavailable`, `football_busy` | Football and basketball only (basketball keeps the football codes): the daily capacity is used up (`resets_at`), or the recognizer is unavailable or busy. Not charged; the other games still work. |
 | 504 | `detection_timeout` | Often a cold start. Retry. |
 
 ## Limits and pricing
 
-* Images: JPEG or PNG, at most 12 MB (football 4 MB). All eight trading card games: several cards per photo (binder pages work; Pokémon best up to about 20), one game per photo. Football: one card per photo.
-* One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football card about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
+* Images: JPEG or PNG, at most 12 MB (football and basketball 4 MB). All eight trading card games, football and basketball: several cards per photo (binder pages work, best up to about 20), one game per photo.
+* One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football or basketball photo about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
 * Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card, also for a low-confidence best guess; card backs, images without a card and cards with a visual mismatch (review reason `visual_mismatch`) are not charged.
 * The API identifies cards. It does not grade card condition.
 
 ## Card search and corrections
 
-Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All eight trading card games and football.
+Base URL: `https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi`, same Bearer key. All eight trading card games, football and basketball.
 
 * **Correct a detection (free):** every detected card has `card_index` and `review`, the response has `correction` with the `request_id`. Within 24 hours, `POST /search` with `{"request_id": correction.request_id, ...card.review.search}` (or your own `q`, or `set` + `number`) returns up to 5 full card objects; `POST /corrections` with `request_id`, `card_index` and the chosen `card_id` returns the corrected card. 5 searches and 3 corrections per detected card, 500 correction searches and 1000 corrections per account per day.
 * **Pokémon versions:** add `cardmarket_id` to the correction (the card's own, its 1st Edition product or a `possible_variants[].cardmarket_id` of that card, else `400 unsupported_cardmarket_id`) to pick a version, and `reverse_holo` (`true` or `false`) for a reverse holo copy. `prices.cardmarket` is then that version's price; `price_basis` says which. The lookup takes the same as `?cardmarket_id=` and `&reverse_holo=true`. One Piece picks a parallel by `cardmarket_id`; Lorcana, Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon and Cyberpunk TCG pick a printing by `card_id` or `set` + `number` and refuse a `cardmarket_id` that does not belong to the card (`400 unsupported_cardmarket_id`).
@@ -233,6 +235,8 @@ curl -X POST https://europe-west1-neosatoshi.cloudfunctions.net/cardsApi/search 
 
 **Football:** `{"tcg": "football", "q": "kane chrome 2023"}`, text only (the player, optionally with set or season words), no `language`, no prices yet. Each result carries `ref`; `GET /cards/football/{card_id}?ref=...` (same key, within 24 hours) returns the card with all parallels of its subset and their print runs. Without a valid `ref` the lookup is 400 and free. Football detections cannot be corrected yet.
 
+**Basketball:** the same as football with `"tcg": "basketball"`, for example `{"tcg": "basketball", "q": "wembanyama prizm 2023"}`; `GET /cards/basketball/{card_id}?ref=...`. Basketball detections cannot be corrected yet.
+
 Details: https://neosatoshi.com/developers/detection-api#card-search
 
 ## Integration guide for coding agents
@@ -247,7 +251,7 @@ The recommended bulk loop:
 
 **Confidence and score.** `confidence` is a fixed step per match method, not a probability. Pokémon: 0.99 direct match, 0.95 number matched, 0.90 direct match (later step), 0.85 number matched (later step), 0.80 direct match (last step), 0.59 best guess. Japanese, Korean and Chinese cards have their own steps (0.99 down to 0.60). `alternatives[].score` is the similarity of a candidate inside this search, another scale. A German Gallopa 189 came back at 0.85 with the alternative Gallopa 30 at score 0.90, and 189 was right. Never pick an alternative by score alone; take one only when its set number matches the card.
 
-**Review reasons.** `low_confidence`: check the set number. `blurred`, `unusual_dimensions`: check the card, a sharper photo helps. `visual_mismatch`, `no_match`: correct or drop (a visual mismatch is not charged). `card_back`: skip (not charged). `variant_price_missing`: the version has no own Cardmarket price, check the price. `print_unconfirmed`, `rarity_unconfirmed`, `version_unconfirmed`, `number_unconfirmed`, `art_unconfirmed`: a person picks the printing. `graded_label_mismatch`: show the slab to a person. Football `not_sure`, `parallel_unconfirmed`: a person confirms. Treat an unknown reason as needing review.
+**Review reasons.** `low_confidence`: check the set number. `blurred`, `unusual_dimensions`: check the card, a sharper photo helps. `visual_mismatch`, `no_match`: correct or drop (a visual mismatch is not charged). `card_back`: skip (not charged). `variant_price_missing`: the version has no own Cardmarket price, check the price. `print_unconfirmed`, `rarity_unconfirmed`, `version_unconfirmed`, `number_unconfirmed`, `art_unconfirmed`: a person picks the printing. `graded_label_mismatch`: show the slab to a person. Football and basketball `not_sure`, `parallel_unconfirmed`: a person confirms. Treat an unknown reason as needing review.
 
 **Special versions and reverse holo (Pokémon).** `prices.cardmarket` is the price of the version the card is; `price_basis` says which (`normal`, `reverse_holo`, `first_edition`, `special_variant`). `prices.cardmarket_normal` is always the plain card, `prices.cardmarket_reverse` the reverse holo family. The photo does not tell which `possible_variants` entry a copy is: a person picks, and you send that entry's `cardmarket_id` with the same `card_id` in the correction. A reverse holo copy: `"reverse_holo": true`. `first_edition` comes from the detection and is kept; only Base Set has its own 1st Edition price.
 
@@ -261,6 +265,7 @@ Runnable: `python3 examples/python/detect.py photo.jpg pokemon --review` (standa
 
 ## Changelog
 
+* **2026-11-13 (OpenAPI 1.17.0):** Basketball cards (`"tcg": "basketball"`: NBA from Panini and Topps, Panini EuroLeague) in detection, card search and lookup, the same fields, limits and credits as football; `card_id` `bk-...`, no prices or images yet, no corrections yet. Football and basketball read several cards per photo. MCP server 0.10.0.
 * **2026-11-12 (OpenAPI 1.16.0):** Cyberpunk TCG (`"tcg": "cyberpunk"`, English and French) in detection, card search, lookup and corrections. New fields for it: `beta`, `finish`, `is_foil`, `cost`, `color`; `card_id` `cp-<print_id>`, `cp-fr-<print_id>` or `cp-c-<card_key>`.
 * **2026-11-11 (OpenAPI 1.15.0):** Pokémon `prices.cardmarket` and `cardmarket_id` now describe the version the card is (picked version, detected special variant, 1st Edition, reverse holo, else the plain card; before: always the plain card). New `price_basis`, `prices.cardmarket_normal`, `prices.cardmarket_reverse`, `prices.tcgplayer`. `possible_variants[].cardmarket_id` is always an integer (before sometimes a digit string); `possible_variants[].price` has `low` and `trend`, `lowPrice` and `trendPrice` are deprecated. Corrections and the lookup take `cardmarket_id` (400 `unsupported_cardmarket_id` for an id of another card) and `reverse_holo`; exports use them. Corrected German, French, Spanish and Italian Pokémon cards keep their localized name. New `review` on every card and `correction.search_endpoint`. Docs: confidence steps vs score, billing of best guesses, 1000 corrections per day.
 
@@ -276,7 +281,7 @@ If you only need a rough description of a photo, a general vision LLM may be eno
 
 ## MCP server (Claude, Cursor, Codex and other AI assistants)
 
-[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same file the NeoSatoshi website exports: custom CSV/JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV, free), `list_export_presets` and `list_supported_games`, for all eight trading card games and football. It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
+[mcp-server/](mcp-server/) ([npm: neosatoshi-card-mcp](https://www.npmjs.com/package/neosatoshi-card-mcp)) is a stdio MCP server with eight tools: `recognize_cards` (local file, https URL or base64; cards reported one by one, catalog images on request), `recognize_folder` (a folder of photos to a CSV or JSON file), `search_cards`, `correct_card`, `get_card`, `export_cards` (the same file the NeoSatoshi website exports: custom CSV/JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV, free), `list_export_presets` and `list_supported_games`, for all eight trading card games, football and basketball. It is listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as `io.github.Cookiebreed/card-recognition-mcp`. Quick setup for Claude Code:
 
 ```bash
 claude mcp add neosatoshi-cards -e NEOSATOSHI_API_KEY=your_key -- npx -y neosatoshi-card-mcp
@@ -306,10 +311,10 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
 
 **Can it recognise several cards in one photo?**
-Yes, in all eight trading card games: binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football cards: one card per photo.
+Yes, in all eight trading card games: binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football and basketball cards too (card fronts, at most 4 MB).
 
 **Does it return prices?**
-Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`. Football cards have no prices in the API yet.
+Yes. Each card comes with its Cardmarket product ID and daily Cardmarket prices in EUR (trend, low, 7 and 30 day average), plus TCGplayer prices in USD where available. A missing price is `null`. Football and basketball cards have no prices in the API yet.
 
 **Does it recognise Japanese, Korean or Chinese cards?**
 Pokémon: Japanese, Korean and Simplified Chinese, besides English, German, French, Italian and Spanish. One Piece and Digimon Card Game: English and Japanese. See the table above for the other games.
@@ -318,7 +323,10 @@ Pokémon: Japanese, Korean and Simplified Chinese, besides English, German, Fren
 No. It identifies which card it is (set, number, rarity, language, variant fields). It does not judge condition.
 
 **Does it recognise football (soccer) cards?**
-Yes, with `"tcg": "football"`: Topps, Panini and other makers, one card front per photo (at most 4 MB). It returns the player, the release (set and number), season, subset, teams, rookie flag and the parallel (three candidates with print runs, a pick only when it is sure). No prices yet. `search_cards` and the card search find football cards by player name.
+Yes, with `"tcg": "football"`: Topps, Panini and other makers, several card fronts per photo (at most 4 MB). It returns the player, the release (set and number), season, subset, teams, rookie flag and the parallel (three candidates with print runs, a pick only when it is sure). No prices yet. `search_cards` and the card search find football cards by player name.
+
+**Does it recognise basketball cards?**
+Yes, with `"tcg": "basketball"`: NBA cards from Panini and Topps (mainly seasons 2018-19 to 2026-27 plus some older releases) and Panini EuroLeague sets from 2023-24, not WNBA, college, G League or NBL. It works like football: player, release, season, subset, teams, rookie flag and parallel, several card fronts per photo, PSA, BGS, CGC and SGC slabs. No prices yet.
 
 **Does it recognise Digimon cards?**
 Yes, the Digimon Card Game in English and Japanese, with `"tcg": "digimon"`: recognised by card number and name, several cards per photo, graded slabs (PSA, BGS, CGC) with the grade read from the label. Alternative arts share the card number, so the printing comes from the picture or stays open with the printings as alternatives to pick. Cardmarket prices (EUR) for English and Japanese printings, TCGplayer (USD) for English only. Older Digimon products (the 1999 card game, the 2000 trading cards) are not recognised.

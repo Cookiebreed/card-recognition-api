@@ -1,6 +1,6 @@
 # NeoSatoshi Card Recognition MCP server
 
-MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG and football (soccer) cards in a photo (binder pages work, football one card per photo) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football: player, release and parallel), and search the card catalog.
+MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/developers/detection-api): lets Claude, Cursor, Codex and other MCP clients identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, football (soccer) and basketball (NBA, EuroLeague) cards in a photo (binder pages work) and get set, number, rarity, Cardmarket ID and daily prices as JSON (football and basketball: player, release and parallel), and search the card catalog.
 
 * Transport: stdio
 * npm package: `neosatoshi-card-mcp`, binary `neosatoshi-card-mcp`
@@ -12,10 +12,10 @@ MCP server for the [NeoSatoshi card recognition API](https://neosatoshi.com/deve
 
 | Argument | Type | Description |
 |---|---|---|
-| `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB (football 4 MB). `~` is expanded. |
+| `image_path` | string | Local `.jpg`, `.jpeg` or `.png`, at most 12 MB (football and basketball 4 MB). `~` is expanded. |
 | `image_url` | string | Public `https://` URL of a JPEG or PNG. Forwarded to the API as is; the server never downloads it. |
 | `image_base64` | string | Base64 JPEG or PNG, a `data:image/...;base64,` prefix is accepted. |
-| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football` |
+| `tcg` | enum | `pokemon` (default), `onepiece`, `lorcana`, `yugioh`, `magic`, `star_wars_unlimited`, `digimon`, `cyberpunk`, `football`, `basketball` |
 
 | `include_images` | boolean | Also return the catalog image of up to 10 recognised cards (from our CDN, at most 4 MB together), so the assistant can compare them with the photo. Default `false`. |
 
@@ -58,9 +58,14 @@ Football line (no prices yet, the parallel is a suggestion a person should confi
 1. Niklas Beste | 2025-26 Topps Chrome Bundesliga #BA-NBE | Base Cards Autograph Variation | Sport-Club Freiburg | parallel Gold Wave Refractor /50 (suggested, confirm it) | serial 37 | 2 alternatives | no price yet
 ```
 
+Basketball (`basketball`) works like football: the same fields, `card_id` `bk-...`, no prices or images yet. NBA cards
+from Panini and Topps, mainly seasons 2018-19 to 2026-27 plus some older releases, and Panini EuroLeague sets from
+2023-24; not WNBA, college, G League or NBL. Football and basketball read several card fronts per photo (binder pages
+work, best up to about 20 cards), at most 4 MB.
+
 When the client sends a progress token (Claude Code, Claude Desktop and most clients do), the detection is streamed and each card is reported as soon as it is recognised: on an 8 card Lorcana page the first card came after about 8 seconds, all eight after 11.
 
-The API identifies cards; it does not grade condition (a PSA, BGS or CGC slab, for football also SGC, comes back with the grade read from the label). One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds; a football card about 6 to 25 seconds. The client waits up to 120 seconds.
+The API identifies cards; it does not grade condition (a PSA, BGS or CGC slab, for football and basketball also SGC, comes back with the grade read from the label). One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a binder page with 9 cards about 17 seconds; a football or basketball photo about 6 to 25 seconds. The client waits up to 120 seconds.
 
 ### `recognize_folder`
 
@@ -80,8 +85,9 @@ product ID, daily prices, images), at most 10, with `has_more` but no total. Wit
 `recognize_cards` it is a free correction search (5 per detected card within 24 hours, at most 5 results). Without
 them it is the paid card search: 0.5 credits when it returns a card.
 
-Football: `{"tcg": "football", "q": "kane chrome 2023"}`, only `q` (the player, optionally with set or season words), no
-`language`, `set` or `number`, no prices yet. Each result carries `ref` for `get_card`.
+Football and basketball: `{"tcg": "football", "q": "kane chrome 2023"}`, `{"tcg": "basketball", "q": "wembanyama prizm 2023"}`,
+only `q` (the player, optionally with set or season words), no `language`, `set` or `number`, no prices yet. Each
+result carries `ref` for `get_card`. Football and basketball detections cannot be corrected yet.
 
 ### `correct_card`
 
@@ -93,7 +99,7 @@ alternatives). Free, within 24 hours, 3 times per card, only for the key that ma
 One card by its `card_id`, for example to refresh a price. 0.5 credits when the card exists. For a wrong detection
 use `search_cards` with `request_id` and `correct_card` instead, both free.
 
-Football: pass `ref` from the `search_cards` result (same key, within 24 hours). The card then comes with all parallels
+Football and basketball: pass `ref` from the `search_cards` result (same key, within 24 hours). The card then comes with all parallels
 of its subset and their print runs. Without a valid `ref` the call is refused and free.
 
 ### `export_cards`
@@ -111,7 +117,7 @@ corrections made with `correct_card`, your saved presets, price rules and templa
 * For the last three: `price_source`, `min_price`, `markup_percent` and `rounding`, like the buttons of the website's
   pricing step (a markup or rounding replaces your saved price rules; `markup_percent` 0 = none). `save_to_folder` writes a new file into an allowed folder (never overwrites), otherwise
 the file comes back in the answer (up to 100 KB). Free, own key only (demo detections keep no cards), not for football
-yet. The answer names cards it left out (`skipped`) and cards whose price depends on a special version (`warnings`).
+or basketball yet. The answer names cards it left out (`skipped`) and cards whose price depends on a special version (`warnings`).
 
 ### `list_export_presets`
 
@@ -218,7 +224,7 @@ Point any client at `node /absolute/path/to/mcp-server/dist/index.js` instead of
 
 ## Security
 
-* Files: only regular files are read. Directories, devices, sockets and pipes are refused. Symlinks are resolved first and the real target is checked. Only `.jpg`, `.jpeg` and `.png` whose content starts with JPEG or PNG magic bytes are accepted, at most 12 MB (football 4 MB).
+* Files: only regular files are read. Directories, devices, sockets and pipes are refused. Symlinks are resolved first and the real target is checked. Only `.jpg`, `.jpeg` and `.png` whose content starts with JPEG or PNG magic bytes are accepted, at most 12 MB (football and basketball 4 MB).
 * `NEOSATOSHI_ALLOWED_DIRS` is checked against the resolved real path, so `../` and symlinks cannot escape it. Entries that do not exist grant nothing.
 * Network: the server only calls `https://europe-west1-neosatoshi.cloudfunctions.net/detectApi` and `.../cardsApi`, and with `include_images` our card image CDN `https://d1m1gwcombja0u.cloudfront.net` (other image hosts are skipped).
 * Writing: only `recognize_folder` writes, and only new files named `neosatoshi_cards_<date>-<time>.csv` / `.json` into the folder it read (same `NEOSATOSHI_ALLOWED_DIRS` check). `image_url` is passed to the API, which fetches and validates it; the server itself never fetches URLs.
