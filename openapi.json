@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "NeoSatoshi Card Recognition API",
-    "version": "1.17.0",
+    "version": "1.18.0",
     "summary": "Send a photo of trading cards, get each card back as JSON with set, number, rarity, Cardmarket ID and daily prices.",
-    "description": "Recognizes several cards per photo (binder pages work, best up to about 20 cards) in Pokémon (English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish), Digimon Card Game (English, Japanese), Cyberpunk TCG (English, French), Riftbound (English) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo). Several cards per photo work for football cards too: each card comes back as its own entry with its box on the photo, and a photo with a card back is never split. Riftbound is recognized too (\"tcg\": \"riftbound\", English; a French or Chinese print comes back in its language with the English printing's name and no price, review reason language_not_listed). A photo of a PSA, BGS or CGC slab (every game; for football cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance: one card scan per detected card, also when the card is a low-confidence best guess. Not charged: card backs, images without a card and cards whose picture does not look like the matched card (review reason visual_mismatch).\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for eight trading card games (not Riftbound) and football (no football prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free. Riftbound is answered by the detection only: the card search, the lookup and corrections do not cover it (\"tcg\": \"riftbound\" there is 400 unsupported_tcg).\n\nIntegration in short (bulk loop): detect, then for each card in cards[]: if review.needed is false, accept it. Otherwise read the set number on the photo (or ask a person), run the free correction search (POST /cardsApi/search with {\"request_id\": correction.request_id, ...card.review.search}) or pick an alternative whose set number matches, then POST /cardsApi/corrections with request_id, card_index and card_id. confidence is a fixed step per match method (Pokémon 0.99, 0.95, 0.90, 0.85, 0.80, 0.59 best guess), not a probability; alternatives[].score is a similarity on a different scale: never pick an alternative by score alone. Pokémon prices.cardmarket is the price of the version the card is (price_basis says which: normal, reverse_holo, first_edition or special_variant); prices.cardmarket_normal and prices.cardmarket_reverse hold the plain and reverse holo families. Pick a special version with a possible_variants[].cardmarket_id in the correction, set reverse_holo there for a reverse holo copy. Retry 429 after Retry-After and 502/503 with backoff, never other 4xx. A detect retry is a new, charged detection; paid search and lookup accept an Idempotency-Key header.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
+    "description": "Recognizes several cards per photo (binder pages work, best up to about 20 cards) in Pokémon (English, German, French, Italian, Spanish, Japanese, Korean and Simplified Chinese), One Piece (English, Japanese), Disney Lorcana (English, German, French, Italian), Yu-Gi-Oh! TCG (English, German, French, Italian, Spanish, Portuguese), Magic: The Gathering (English, German, French, Italian, Spanish), Star Wars: Unlimited (English, German, French, Italian, Spanish), Digimon Card Game (English, Japanese), Cyberpunk TCG (English, French), Riftbound (English) and football (soccer) cards from Topps, Panini and other makers (\"tcg\": \"football\": the player, release, season, subset, the top candidates and the suggested parallel with its print run; no prices yet, at most 4 MB per photo) and NBA and EuroLeague basketball cards (\"tcg\": \"basketball\", the same fields, limits and credits as football, no prices yet). Several cards per photo work for football and basketball cards too: each card comes back as its own entry with its box on the photo, and a photo with a card back is never split. Riftbound is recognized too (\"tcg\": \"riftbound\", English; a French or Chinese print comes back in its language with the English printing's name and no price, review reason language_not_listed). A photo of a PSA, BGS or CGC slab (for football and basketball cards also SGC) also fills cards[].graded with company, grade and cert number as printed on the label.\n\nSend the image as base64 in \"image\", or as a public https link in \"image_url\" (useful for chat assistants that cannot encode files).\n\nTesting without an account: use the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` as the bearer token. It allows 10 detections per day per network. AI agents may call the endpoint directly with it.\n\nProduction: create your own key in the NeoSatoshi dashboard settings (any paid plan). Detections draw from the plan's monthly card scan balance: one card scan per detected card, also when the card is a low-confidence best guess. Not charged: card backs, images without a card and cards whose picture does not look like the matched card (review reason visual_mismatch).\n\nBy default the call answers with one JSON body once detection is done. Use a client timeout of at least 120 seconds; one card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period, and a binder page with 9 cards about 17 seconds.\n\nOptional streaming: send \"stream\": true (or the header Accept: text/event-stream) to get Server-Sent Events instead: accepted, progress, one card event per card as soon as it is matched, then exactly one final event, done (the same body as the JSON response) or error. Errors before the detection starts stay plain JSON responses. A stream cannot be resumed; a reconnect is a new, charged detection.\n\nCard search: POST /cardsApi/search and GET /cardsApi/cards/{tcg}/{card_id} return full card objects (prices, Cardmarket product id, images) for the eight trading card games other than Riftbound, football and basketball (no football or basketball prices), 0.5 credits per call that returns a card, from the same balance. Correcting a detected card is free. Riftbound is answered by the detection only: the card search, the lookup and corrections do not cover it (\"tcg\": \"riftbound\" there is 400 unsupported_tcg).\n\nIntegration in short (bulk loop): detect, then for each card in cards[]: if review.needed is false, accept it. Otherwise read the set number on the photo (or ask a person), run the free correction search (POST /cardsApi/search with {\"request_id\": correction.request_id, ...card.review.search}) or pick an alternative whose set number matches, then POST /cardsApi/corrections with request_id, card_index and card_id. confidence is a fixed step per match method (Pokémon 0.99, 0.95, 0.90, 0.85, 0.80, 0.59 best guess), not a probability; alternatives[].score is a similarity on a different scale: never pick an alternative by score alone. Pokémon prices.cardmarket is the price of the version the card is (price_basis says which: normal, reverse_holo, first_edition or special_variant); prices.cardmarket_normal and prices.cardmarket_reverse hold the plain and reverse holo families. Pick a special version with a possible_variants[].cardmarket_id in the correction, set reverse_holo there for a reverse holo copy. Retry 429 after Retry-After and 502/503 with backoff, never other 4xx. A detect retry is a new, charged detection; paid search and lookup accept an Idempotency-Key header.\n\nExports: POST /cardsApi/exports turns up to 20 of your detections (own API key, within 48 hours) into the same file the NeoSatoshi website exports (custom CSV or JSON, TCGPowerTools CSV, Shopify product CSV or eBay Seller Hub CSV), built by the website's own export code; free.\n\nFull documentation with every game-specific field: https://neosatoshi.com/developers/detection-api",
     "contact": {
       "name": "NeoSatoshi API",
       "email": "api@neosatoshi.com",
@@ -107,6 +107,13 @@
                   "value": {
                     "image": "<base64-encoded JPEG or PNG>",
                     "tcg": "football"
+                  }
+                },
+                "basketball": {
+                  "summary": "Basketball cards (NBA, EuroLeague)",
+                  "value": {
+                    "image": "<base64-encoded JPEG or PNG>",
+                    "tcg": "basketball"
                   }
                 },
                 "image_url": {
@@ -613,7 +620,7 @@
             }
           },
           "400": {
-            "description": "missing_image, ambiguous_image (both image and image_url), bad_image, image_too_large (over 12 MB, football over 4 MB), unsupported_image (only JPEG and PNG), unsupported_tcg, bad_image_url (not a public https URL) or image_url_fetch_failed.",
+            "description": "missing_image, ambiguous_image (both image and image_url), bad_image, image_too_large (over 12 MB, football and basketball over 4 MB), unsupported_image (only JPEG and PNG), unsupported_tcg, bad_image_url (not a public https URL) or image_url_fetch_failed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -653,7 +660,7 @@
             }
           },
           "422": {
-            "description": "no_card_detected: no card was recognised. Nothing is charged. unreadable_image (football): the recognizer could not read the image.",
+            "description": "no_card_detected: no card was recognised. Nothing is charged. unreadable_image (football, basketball): the recognizer could not read the image.",
             "content": {
               "application/json": {
                 "schema": {
@@ -663,7 +670,7 @@
             }
           },
           "429": {
-            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network), or football_busy: the key already has 5 football photos in progress (Retry-After is set, nothing was charged). Wait for Retry-After; a retry is a new, charged detection.",
+            "description": "rate_limited, or demo_limit_reached for the public demo key (10 per day per network), or football_busy: the key already has 5 football or basketball photos in progress (Retry-After is set, nothing was charged). Wait for Retry-After; a retry is a new, charged detection.",
             "content": {
               "application/json": {
                 "schema": {
@@ -683,7 +690,7 @@
             }
           },
           "503": {
-            "description": "Football only. football_daily_limit: football recognition has used its daily capacity (it shares an eBay quota); resets_at and the Retry-After header say when it opens again, nothing was charged and the other games are not affected. football_unavailable: the recognizer is unavailable, retry later. football_busy: the recognizer is busy, retry in a few seconds; nothing was charged.",
+            "description": "Football and basketball only (basketball keeps the football codes). football_daily_limit: the recognition has used its daily capacity (it shares an eBay quota); resets_at and the Retry-After header say when it opens again, nothing was charged and the other games are not affected. football_unavailable: the recognizer is unavailable, retry later. football_busy: the recognizer is busy, retry in a few seconds; nothing was charged.",
             "content": {
               "application/json": {
                 "schema": {
@@ -709,7 +716,7 @@
       "post": {
         "operationId": "searchCards",
         "summary": "Search the card catalog (paid), or search for the right card of a detection (free)",
-        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards; the quickest body is {\"request_id\": correction.request_id, ...cards[i].review.search}. The eight trading card games other than Riftbound, in their catalog languages; the card search also answers for football (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad). 30 requests per minute per key, shared by both modes. A German, French, Spanish or Italian Pokémon result has its name in the card's language.",
+        "description": "Two modes. Card search (body without request_id): 0.5 credits per call that returns at least one card, nothing for no result, from the same credit balance as detection; at most 10 full card objects (prices, Cardmarket product id, images), has_more but no total; a daily limit per plan. Correction search (with request_id and card_index of a detection): free for 24 hours, 5 searches per detected card, 500 per account per day, at most 5 cards; the quickest body is {\"request_id\": correction.request_id, ...cards[i].review.search}. The eight trading card games other than Riftbound, in their catalog languages; the card search also answers for football and basketball (text only, no prices, no corrections). A search for fewer than 3 letters, a set alone or a number alone is refused (query_too_broad). 30 requests per minute per key, shared by both modes. A German, French, Spanish or Italian Pokémon result has its name in the card's language.",
         "requestBody": {
           "required": true,
           "content": {
@@ -853,7 +860,7 @@
             }
           },
           "400": {
-            "description": "invalid_json, invalid_card_index, invalid_query, unsupported_language, unsupported_tcg, correction_not_available_for_tcg (football detections), query_too_broad, invalid_idempotency_key. Fix the request; do not retry.",
+            "description": "invalid_json, invalid_card_index, invalid_query, unsupported_language, unsupported_tcg, correction_not_available_for_tcg (football and basketball detections), query_too_broad, invalid_idempotency_key. Fix the request; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1365,7 +1372,7 @@
             }
           },
           "400": {
-            "description": "invalid_json, invalid_card_index, invalid_card_id, invalid_query (for example reverse_holo for a game other than Pokémon), unsupported_language, unsupported_tcg, unsupported_cardmarket_id (Pokémon: the cardmarket_id is not the card's own, its 1st Edition product or one of its possible_variants; One Piece: none of the card's printings; other games: not the product of the card answered, pick their printing by card_id or set + number), correction_not_available_for_tcg (football). Fix the request; do not retry.",
+            "description": "invalid_json, invalid_card_index, invalid_card_id, invalid_query (for example reverse_holo for a game other than Pokémon), unsupported_language, unsupported_tcg, unsupported_cardmarket_id (Pokémon: the cardmarket_id is not the card's own, its 1st Edition product or one of its possible_variants; One Piece: none of the card's printings; other games: not the product of the card answered, pick their printing by card_id or set + number), correction_not_available_for_tcg (football, basketball). Fix the request; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1451,7 +1458,7 @@
       "get": {
         "operationId": "getCard",
         "summary": "One card by id (paid)",
-        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; cardmarket_id picks a version (the card's own, its 1st Edition product or a possible_variants[].cardmarket_id, else 400 unsupported_cardmarket_id) and reverse_holo=true prices the reverse holo; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Digimon Card Game: the card_id of a printing (dg-BT1-025_P1, dg-ja-BT1-025_P1; the id names its language) or of the card (dg-c-BT1-025, or the bare number BT1-025), which answers the card with its printings. Cyberpunk TCG: the card_id of a printing (cp-WNC-132, the Beta cp-WNCB-132, French cp-fr-WNC-132; the id names its language) or of the card (cp-c-v-streetkid, or the bare card key v-streetkid), which answers the card with its printings. Football: card_id from a football search plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
+        "description": "The current card object for a card_id from a detection, a search or your own records, for example to refresh a price. 0.5 credits when the card exists; an unknown card is 404 and free. Pokémon card_id like \"base1-4\"; cardmarket_id picks a version (the card's own, its 1st Edition product or a possible_variants[].cardmarket_id, else 400 unsupported_cardmarket_id) and reverse_holo=true prices the reverse holo; One Piece: the card code, cardmarket_id picks a parallel; Lorcana: the card id; Yu-Gi-Oh!: the passcode, set (the printed code, e.g. LOB-EN001) picks a printing; Magic: the oracle_id, set + number pick the printing; Star Wars: Unlimited: the card_id of a printing or the card_key. Digimon Card Game: the card_id of a printing (dg-BT1-025_P1, dg-ja-BT1-025_P1; the id names its language) or of the card (dg-c-BT1-025, or the bare number BT1-025), which answers the card with its printings. Cyberpunk TCG: the card_id of a printing (cp-WNC-132, the Beta cp-WNCB-132, French cp-fr-WNC-132; the id names its language) or of the card (cp-c-v-streetkid, or the bare card key v-streetkid), which answers the card with its printings. Football and basketball: card_id from a search of that game plus its ref; the answer adds the parallels (name, print_run) of the card's subset, no price.",
         "parameters": [
           {
             "name": "tcg",
@@ -1468,7 +1475,8 @@
                 "star_wars_unlimited",
                 "digimon",
                 "cyberpunk",
-                "football"
+                "football",
+                "basketball"
               ],
               "description": "Default: the detected card's game."
             }
@@ -1837,7 +1845,7 @@
             }
           },
           "400": {
-            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, unsupported_cardmarket_id (not a version or not the product of this card), invalid_idempotency_key, ref_required, ref_invalid, ref_expired (football). Nothing charged; do not retry.",
+            "description": "unsupported_tcg, invalid_card_id, unsupported_language, invalid_query, unsupported_cardmarket_id (not a version or not the product of this card), invalid_idempotency_key, ref_required, ref_invalid, ref_expired (football, basketball). Nothing charged; do not retry.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2104,7 +2112,7 @@
           "image": {
             "type": "string",
             "contentEncoding": "base64",
-            "description": "Base64-encoded JPEG or PNG, at most 12 MB (football: at most 4 MB). One or more cards in all nine trading card games and in football (binder pages work, best up to about 20 cards). Football: card fronts; a photo with a card back is never split."
+            "description": "Base64-encoded JPEG or PNG, at most 12 MB (football and basketball: at most 4 MB). One or more cards in all nine trading card games and in football and basketball (binder pages work, best up to about 20 cards). Football and basketball: card fronts; a photo with a card back is never split."
           },
           "image_url": {
             "type": "string",
@@ -2123,7 +2131,8 @@
               "digimon",
               "cyberpunk",
               "riftbound",
-              "football"
+              "football",
+              "basketball"
             ],
             "default": "pokemon",
             "description": "Which game the image shows."
@@ -2192,7 +2201,7 @@
           },
           "warnings": {
             "type": "array",
-            "description": "Only when the image was processed in part, or when cards on it could not be read. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest. code partial_recognition (football): part of the recognizer was unavailable, so the result may be less exact. code cards_too_small (football): count cards on the photo were too small to read; they are not returned and not charged.",
+            "description": "Only when the image was processed in part, or when cards on it could not be read. code credits_ran_out: the key ran out of card scans during this image, only the returned cards were processed and charged. code incomplete: the detection failed for part of the image. Send the image again for the rest. code partial_recognition (football, basketball): part of the recognizer was unavailable, so the result may be less exact. code cards_too_small (football, basketball): count cards on the photo were too small to read; they are not returned and not charged.",
             "items": {
               "type": "object",
               "properties": {
@@ -2273,7 +2282,7 @@
       },
       "Card": {
         "type": "object",
-        "description": "Fields shared by every game are listed here. Pokémon cards are described in full by PokemonCard (no tcg field). Each other game adds its own: One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; Digimon Card Game card_key (the card number, e.g. BT1-025, one card in English and Japanese), print_id (the official printing, e.g. BT1-025_P1), name_en, type, level, colors, set.code, variant (Alternative Art, or パラレル on a Japanese parallel), parallel_index, finishes, print_unconfirmed, number_unconfirmed (card_id is dg-<print_id> for an English printing, dg-ja-<print_id> for a Japanese one and dg-c-<number> while the printing is open: then there is no price and the alternatives are the printings, each priced; no foil, and Japanese cards have a Cardmarket price but no TCGplayer price); Cyberpunk TCG card_key (the card, e.g. v-streetkid, one card in English and French), print_id (set code + printed number, e.g. WNC-132; the Beta WNCB-132 has the same art), subtitle, name_en, type, color, cost, set.code, set.number (as printed: 132, B132 on a Beta, 004a), finish (normal or foil, fixed per printing: Rare and above are foil), finishes, is_foil, beta, print_unconfirmed, number_unconfirmed (card_id is cp-<print_id> for an English printing, cp-fr-<print_id> for a French one and cp-c-<card_key> while the printing is open: then there is no price and the alternatives are the printings, each priced, the Retail base first; French cards have a Cardmarket price but no TCGplayer price); Riftbound card_key (the card, e.g. kaisa-daughter-of-the-void, one card in every printing), print_id (set code + printed number, e.g. OGN-247, OGN-066a alternate art, OGN-299* signed, VEN-R02 rune, UNL-T02-T05 a double-sided token), subtitle, name_en, type, domain (a list, e.g. [\"Fury\", \"Mind\"]), cost, set.code, set.number (as printed: 247, 066a, 299*, T02 // T05), variant (Overnumbered, Signature, Prize Wall, Best Of or null), finishes ([\"normal\", \"foil\"] for Common and Uncommon, [\"foil\"] for Rare and above, [\"normal\"] for runes, tokens and metal cards), finish (the only one, or normal for a printing with both: the photo does not tell them apart), is_foil, double_sided, prices.cardmarket (the normal finish), prices.cardmarket_foil (the foil finish) and prices.tcgplayer.market / .foil, print_unconfirmed, number_unconfirmed (card_id is rb-<print_id> for an English printing, rb-fr-<print_id> or rb-zh-<print_id> for a French or Chinese print and rb-c-<card_key> while the printing is open: then there is no price and the alternatives are the printings, each priced; a finish the printing does not exist in has no price; French and Chinese prints carry the English printing's name but no price (review reason language_not_listed); Riftbound is not in the card search, the lookup or corrections, so review.search is always null); football season, subset, teams, rookie, card_type, sure, score, parallel, box (football has no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
+        "description": "Fields shared by every game are listed here. Pokémon cards are described in full by PokemonCard (no tcg field). Each other game adds its own: One Piece card_id, color, type; Lorcana version, full_name, name_en, ink, finish; Yu-Gi-Oh! passcode, set.code, edition, price_versions; Magic printing and foil prices; Star Wars: Unlimited card_key, subtitle, name_en, subtitle_en, card_id_foil, variant, serialized, version_unconfirmed; Digimon Card Game card_key (the card number, e.g. BT1-025, one card in English and Japanese), print_id (the official printing, e.g. BT1-025_P1), name_en, type, level, colors, set.code, variant (Alternative Art, or パラレル on a Japanese parallel), parallel_index, finishes, print_unconfirmed, number_unconfirmed (card_id is dg-<print_id> for an English printing, dg-ja-<print_id> for a Japanese one and dg-c-<number> while the printing is open: then there is no price and the alternatives are the printings, each priced; no foil, and Japanese cards have a Cardmarket price but no TCGplayer price); Cyberpunk TCG card_key (the card, e.g. v-streetkid, one card in English and French), print_id (set code + printed number, e.g. WNC-132; the Beta WNCB-132 has the same art), subtitle, name_en, type, color, cost, set.code, set.number (as printed: 132, B132 on a Beta, 004a), finish (normal or foil, fixed per printing: Rare and above are foil), finishes, is_foil, beta, print_unconfirmed, number_unconfirmed (card_id is cp-<print_id> for an English printing, cp-fr-<print_id> for a French one and cp-c-<card_key> while the printing is open: then there is no price and the alternatives are the printings, each priced, the Retail base first; French cards have a Cardmarket price but no TCGplayer price); Riftbound card_key (the card, e.g. kaisa-daughter-of-the-void, one card in every printing), print_id (set code + printed number, e.g. OGN-247, OGN-066a alternate art, OGN-299* signed, VEN-R02 rune, UNL-T02-T05 a double-sided token), subtitle, name_en, type, domain (a list, e.g. [\"Fury\", \"Mind\"]), cost, set.code, set.number (as printed: 247, 066a, 299*, T02 // T05), variant (Overnumbered, Signature, Prize Wall, Best Of or null), finishes ([\"normal\", \"foil\"] for Common and Uncommon, [\"foil\"] for Rare and above, [\"normal\"] for runes, tokens and metal cards), finish (the only one, or normal for a printing with both: the photo does not tell them apart), is_foil, double_sided, prices.cardmarket (the normal finish), prices.cardmarket_foil (the foil finish) and prices.tcgplayer.market / .foil, print_unconfirmed, number_unconfirmed (card_id is rb-<print_id> for an English printing, rb-fr-<print_id> or rb-zh-<print_id> for a French or Chinese print and rb-c-<card_key> while the printing is open: then there is no price and the alternatives are the printings, each priced; a finish the printing does not exist in has no price; French and Chinese prints carry the English printing's name but no price (review reason language_not_listed); Riftbound is not in the card search, the lookup or corrections, so review.search is always null); football and basketball season, subset, teams, rookie, card_type, sure, score, parallel, box (they have no language, rarity, Cardmarket ID, confidence or image_quality; prices and images are null). See the documentation for every field.",
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -2294,7 +2303,8 @@
               "digimon",
               "cyberpunk",
               "riftbound",
-              "football"
+              "football",
+              "basketball"
             ],
             "description": "Present for every game except Pokémon."
           },
@@ -2352,7 +2362,7 @@
               "object",
               "null"
             ],
-            "description": "cardmarket in EUR (trend, low, avg7, avg30, see PriceFamily), tcgplayer in USD where available (see TcgplayerPrice). Game-specific families (cardmarket_foil and others) are listed per game. A missing price is null, never 0. null for football: football prices are not in the API yet.",
+            "description": "cardmarket in EUR (trend, low, avg7, avg30, see PriceFamily), tcgplayer in USD where available (see TcgplayerPrice). Game-specific families (cardmarket_foil and others) are listed per game. A missing price is null, never 0. null for football and basketball: their prices are not in the API yet.",
             "additionalProperties": true
           },
           "images": {
@@ -2371,7 +2381,7 @@
                 ]
               }
             },
-            "description": "Reference image on our CDN. Both null for football: we hold no football card images."
+            "description": "Reference image on our CDN. Both null for football and basketball: we hold no images of those cards."
           },
           "confidence": {
             "type": [
@@ -2674,7 +2684,7 @@
           "object",
           "null"
         ],
-        "description": "The slab on the photo, null for a raw card. PSA, BGS and CGC labels in every game, for football cards also SGC. The grade as read from the label, never an estimate; prices stay those of the raw card. A slab of another company comes back as a raw card or with grader null, never with a grade.",
+        "description": "The slab on the photo, null for a raw card. PSA, BGS and CGC labels in every game, for football and basketball cards also SGC. The grade as read from the label, never an estimate; prices stay those of the raw card. A slab of another company comes back as a raw card or with grader null, never with a grade.",
         "properties": {
           "grader": {
             "type": [
@@ -2688,7 +2698,7 @@
               "SGC",
               null
             ],
-            "description": "null when the slab was recognised but the company was not. SGC only on football cards; on the other games an SGC slab comes back with grader null."
+            "description": "null when the slab was recognised but the company was not. SGC only on football and basketball cards; on the other games an SGC slab comes back with grader null."
           },
           "grade": {
             "type": [
@@ -3026,9 +3036,10 @@
               "star_wars_unlimited",
               "digimon",
               "cyberpunk",
-              "football"
+              "football",
+              "basketball"
             ],
-            "description": "The game to search. football: text search only (the player, optionally with set or season words), no language, no prices; each result carries a ref for the lookup."
+            "description": "The game to search. football and basketball: text search only (the player, optionally with set or season words), no language, no prices; each result carries a ref for the lookup."
           },
           "q": {
             "type": "string",
@@ -3885,7 +3896,7 @@
       },
       "Review": {
         "type": "object",
-        "description": "Per-card hint whether a person or your code should check this card. Present on every card of every game, in detections, search results, lookups and corrections. Rule: accept the card when needed is false; otherwise check it and correct it if it is wrong (free).\n\nReason codes (treat an unknown code as needing review): low_confidence (confidence below 0.85; Pokémon best guess 0.59, Japanese/Korean/Chinese best guesses 0.60, 0.72, 0.78, 0.82); visual_mismatch (the picture does not look like the matched card; such a card is not charged); card_back (a card back, not charged); no_match (no catalog card, card_id null); blurred, unusual_dimensions (image quality); variant_price_missing (the card is a reverse holo or special version but that version has no own Cardmarket price); print_unconfirmed, rarity_unconfirmed, version_unconfirmed, number_unconfirmed, art_unconfirmed (the game's own open flags: Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon, Cyberpunk, Riftbound, Lorcana); graded_label_mismatch (a slab label names another card, graded.card_check disagree); partial_read (Cyberpunk and Riftbound: only the number or only the name text was read, the card keeps its printing and price but is no proven match); language_not_listed (Riftbound: a French or Chinese print, recognized with its printing but without any price, as the website does not list it yet); not_sure (football recognizer not sure, sure false); parallel_unconfirmed (football parallel not picked).",
+        "description": "Per-card hint whether a person or your code should check this card. Present on every card of every game, in detections, search results, lookups and corrections. Rule: accept the card when needed is false; otherwise check it and correct it if it is wrong (free).\n\nReason codes (treat an unknown code as needing review): low_confidence (confidence below 0.85; Pokémon best guess 0.59, Japanese/Korean/Chinese best guesses 0.60, 0.72, 0.78, 0.82); visual_mismatch (the picture does not look like the matched card; such a card is not charged); card_back (a card back, not charged); no_match (no catalog card, card_id null); blurred, unusual_dimensions (image quality); variant_price_missing (the card is a reverse holo or special version but that version has no own Cardmarket price); print_unconfirmed, rarity_unconfirmed, version_unconfirmed, number_unconfirmed, art_unconfirmed (the game's own open flags: Yu-Gi-Oh!, Magic, Star Wars: Unlimited, Digimon, Cyberpunk, Riftbound, Lorcana); graded_label_mismatch (a slab label names another card, graded.card_check disagree); partial_read (Cyberpunk and Riftbound: only the number or only the name text was read, the card keeps its printing and price but is no proven match); language_not_listed (Riftbound: a French or Chinese print, recognized with its printing but without any price, as the website does not list it yet); not_sure (football or basketball recognizer not sure, sure false); parallel_unconfirmed (football or basketball parallel not picked).",
         "properties": {
           "needed": {
             "type": "boolean",
@@ -3907,7 +3918,7 @@
                 "type": "null"
               }
             ],
-            "description": "Correction search body when the card can be corrected; null when no review is needed, for football (no football corrections), for Riftbound (not in the card search) and for search and lookup results (no card_index)."
+            "description": "Correction search body when the card can be corrected; null when no review is needed, for football and basketball (no corrections for them), for Riftbound (not in the card search) and for search and lookup results (no card_index)."
           }
         },
         "required": [

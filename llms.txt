@@ -67,7 +67,7 @@ JSON {error, message}. 400 missing_image, bad_image, image_too_large, unsupporte
 
 ## Changelog
 
-* 2026-11-13 (OpenAPI 1.17.0): Riftbound (tcg riftbound) in detection only; the card search, lookup and corrections do not cover it (400 unsupported_tcg), review.search always null. English prints priced; French and Chinese prints recognized without a price (new review reason language_not_listed). card_id rb-<print_id>, rb-fr-<print_id>, rb-zh-<print_id> or rb-c-<card_key>; new fields domain, double_sided, print_source.
+* 2026-11-13 (OpenAPI 1.18.0): Riftbound (tcg riftbound) in detection only; the card search, lookup and corrections do not cover it (400 unsupported_tcg), review.search always null. English prints priced; French and Chinese prints recognized without a price (new review reason language_not_listed). card_id rb-<print_id>, rb-fr-<print_id>, rb-zh-<print_id> or rb-c-<card_key>; new fields domain, double_sided, print_source.
 * 2026-11-12 (OpenAPI 1.16.0): Cyberpunk TCG (tcg cyberpunk, English and French) in detection, card search, lookup and corrections; new fields beta, finish, is_foil, cost, color; card_id cp-<print_id>, cp-fr-<print_id> or cp-c-<card_key>.
 * 2026-11-11 (OpenAPI 1.15.0): Pokémon prices.cardmarket and cardmarket_id describe the version the card is (before: always the plain card); new price_basis, prices.cardmarket_normal, prices.cardmarket_reverse, prices.tcgplayer, review, correction.search_endpoint; possible_variants cardmarket_id always an integer, price low and trend (lowPrice, trendPrice deprecated); corrections and lookup take cardmarket_id and reverse_holo; corrected localized Pokémon cards keep their localized name.
 
