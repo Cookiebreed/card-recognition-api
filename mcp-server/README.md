@@ -140,7 +140,7 @@ Games, card languages, `tcg` values, limits and card search prices. No API call,
 
 | Variable | Required | Description |
 |---|---|---|
-| `NEOSATOSHI_API_KEY` | no | Your API key from https://neosatoshi.com/dashboard/settings/settings#api-keys (any paid plan). Without it the public demo key is used: 10 detections per day per network. |
+| `NEOSATOSHI_API_KEY` | no | Your API key from https://neosatoshi.com/dashboard/settings/settings#api-keys (a free account includes 50 cards a month). Without it the public demo key is used: 10 detections per day per network. |
 | `NEOSATOSHI_ALLOWED_DIRS` | no | Directories `image_path` may read from, separated by `:` (`;` on Windows). Unset means any readable image file. Set it to limit what an assistant can send. |
 
 ## Setup

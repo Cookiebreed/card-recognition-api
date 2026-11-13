@@ -211,7 +211,7 @@ Errors return JSON with `error` (a code) and usually `message`.
 * Images: JPEG or PNG, at most 12 MB (football and basketball 4 MB). All eight trading card games, football and basketball: several cards per photo (binder pages work, best up to about 20), one game per photo.
 * One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; a football or basketball photo about 6 to 25 seconds. Use a client timeout of at least 120 seconds.
 * Demo key: 10 detections per day per network, no signup. Good for trying the API, not for production.
-* Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . Any paid plan works; the smallest, Start-Up, costs 19 per month and includes 1,000 card scans. One credit per detected card, also for a low-confidence best guess; card backs, images without a card and cards with a visual mismatch (review reason `visual_mismatch`) are not charged.
+* Own keys: create them in the dashboard at https://neosatoshi.com/dashboard/settings/settings#api-keys . A free account includes 50 card scans a month; the smallest paid plan, Start-Up, costs 19 per month and includes 1,000. One credit per detected card, also for a low-confidence best guess; card backs, images without a card and cards with a visual mismatch (review reason `visual_mismatch`) are not charged.
 * The API identifies cards. It does not grade card condition.
 
 ## Card search and corrections
@@ -308,7 +308,7 @@ Without `NEOSATOSHI_API_KEY` it uses the demo key. See [mcp-server/README.md](mc
 ## FAQ
 
 **Is there a free API to identify Pokémon cards from a photo?**
-Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key on any paid plan.
+Yes, for testing: the public demo key `nsk_live_9c253fbed995042a98280ad13e5c47d3c4a59c9b4f0f7274` allows 10 detections per day per network without signup. For more, create your own key: a free account includes 50 card scans a month, paid plans more.
 
 **Can it recognise several cards in one photo?**
 Yes, in all eight trading card games: binder pages work (Pokémon best up to about 20 cards per photo; an 8 card Lorcana page took about 8 seconds). One game per photo. Football and basketball cards too (card fronts, at most 4 MB).
@@ -344,7 +344,7 @@ One card usually takes about 4 seconds, about 10 to 12 seconds on the first requ
 Yes. With `"stream": true` each card arrives as a Server-Sent Event as soon as it is recognised. It helps with binder pages; see [Streaming](#streaming).
 
 **What does it cost?**
-One credit per detected card, from the plan's monthly card scans, also for a low-confidence best guess. Card backs, images without a card and visual mismatches are not charged. The smallest paid plan, Start-Up, costs 19 per month and includes 1,000 card scans.
+One credit per detected card, from the plan's monthly card scans, also for a low-confidence best guess. Card backs, images without a card and visual mismatches are not charged. A free account includes 50 card scans a month; the smallest paid plan, Start-Up, costs 19 per month and includes 1,000.
 
 **Can I send an image URL instead of base64?**
 Yes, send `"image_url": "https://..."` instead of `"image"`. The URL must be public https and point to a JPEG or PNG of at most 12 MB.
