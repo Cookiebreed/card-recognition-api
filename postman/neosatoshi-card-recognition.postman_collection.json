@@ -348,7 +348,38 @@
                 "detectApi"
               ]
             },
-            "description": "Send a base64 JPEG or PNG (the card front, max 4 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+            "description": "Send a base64 JPEG or PNG (card fronts, several per photo work, max 4 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+          }
+        },
+        {
+          "name": "Detect Basketball cards (base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"{{imageBase64}}\",\n  \"tcg\": \"basketball\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Send a base64 JPEG or PNG (card fronts, several per photo work, max 4 MB). Paste the base64 string into the collection variable imageBase64 (for example from: base64 < card.jpg | tr -d '\\n'). tcg=basketball (NBA from Panini and Topps, Panini EuroLeague). Works like football: player, release, season, subset and the suggested parallel; no prices yet."
           }
         }
       ]
@@ -663,7 +694,38 @@
                 "detectApi"
               ]
             },
-            "description": "Alternative input: a public https URL to a JPEG or PNG (the card front, max 4 MB), fetched by the API. Set the collection variable imageUrl. tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+            "description": "Alternative input: a public https URL to a JPEG or PNG (card fronts, several per photo work, max 4 MB), fetched by the API. Set the collection variable imageUrl. tcg=football. Player, release, season, subset and the suggested parallel; no prices yet."
+          }
+        },
+        {
+          "name": "Detect Basketball cards (image_url)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"{{imageUrl}}\",\n  \"tcg\": \"basketball\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/detectApi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "detectApi"
+              ]
+            },
+            "description": "Alternative input: a public https URL to a JPEG or PNG (card fronts, several per photo work, max 4 MB), fetched by the API. Set the collection variable imageUrl. tcg=basketball (NBA from Panini and Topps, Panini EuroLeague). Player, release, season, subset and the suggested parallel; no prices yet."
           }
         },
         {
@@ -821,6 +883,38 @@
               ]
             },
             "description": "Needs the ref of a search result of the same key, valid 24 hours; returns the card with all parallels of its subset and their print runs. Without a valid ref: 400, free."
+          }
+        },
+        {
+          "name": "Search basketball cards",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tcg\": \"basketball\",\n  \"q\": \"wembanyama prizm 2023\",\n  \"limit\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cardsApi/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cardsApi",
+                "search"
+              ]
+            },
+            "description": "Like football: text only, the player with optional set or season words. No language, no prices yet. Each result has a ref for the lookup (GET /cardsApi/cards/basketball/{card_id}?ref=...)."
           }
         },
         {

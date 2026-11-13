@@ -60,7 +60,7 @@ export async function reviewCards(result) {
       if (!review.needed) { out.push(card); continue; }
       console.log(`Card ${card.card_index}: ${card.name} #${card.set?.number} needs review (${(review.reasons ?? []).join(", ")})`);
       if (!review.search || !result.correction) {
-        console.log("  cannot be corrected here (card back, football, Riftbound or no correction window)");
+        console.log("  cannot be corrected here (card back, football, basketball, Riftbound or no correction window)");
         out.push(card);
         continue;
       }

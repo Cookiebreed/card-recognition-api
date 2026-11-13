@@ -1,5 +1,7 @@
 // Turns an API response into a short, readable per-card summary.
 
+import { isSport } from "./constants.js";
+
 type Obj = Record<string, any>;
 
 function fmtPrice(p: Obj | undefined | null, field = "trend"): string | null {
@@ -47,8 +49,8 @@ function graded(card: Obj): string | null {
   return `graded ${[g.grader ?? "unknown grader", g.grade].filter(Boolean).join(" ")}`;
 }
 
-/** Football cards: player, release, parallel; no Cardmarket id and no prices. */
-function summarizeFootball(card: Obj, index: number, requestId: string | null): string {
+/** Football and basketball cards: player, release, parallel; no Cardmarket id and no prices. */
+function summarizeSport(card: Obj, index: number, requestId: string | null): string {
   const set: Obj = card.set ?? {};
   const parts: string[] = [`${lead(card, index)}${card.name ?? "(unknown)"}`];
   if (set.name || set.number) parts.push(`${set.name ?? "set ?"}${set.number ? ` #${set.number}` : ""}`);
@@ -80,7 +82,7 @@ function riftboundPrint(card: Obj): string {
 }
 
 export function summarizeCard(card: Obj, index: number, requestId: string | null = null): string {
-  if (card.tcg === "football") return summarizeFootball(card, index, requestId);
+  if (isSport(card.tcg)) return summarizeSport(card, index, requestId);
   const name = card.full_name ?? card.name ?? "(unknown)";
   const set: Obj = card.set ?? {};
   const setCode = set.ptcgo_code ?? set.code;

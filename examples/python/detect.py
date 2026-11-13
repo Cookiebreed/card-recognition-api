@@ -94,7 +94,7 @@ def review_cards(result):
         number_now = (card.get("set") or {}).get("number")
         print(f"Card {card.get('card_index')}: {card.get('name')} #{number_now} needs review ({', '.join(review.get('reasons', []))})")
         if not review.get("search") or not result.get("correction"):
-            print("  cannot be corrected here (card back, football, Riftbound or no correction window)")
+            print("  cannot be corrected here (card back, football, basketball, Riftbound or no correction window)")
             out.append(card)
             continue
         number = input("  Set number printed on the card (Enter keeps the match): ").strip()

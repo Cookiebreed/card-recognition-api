@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Cookiebreed/card-recognition-mcp",
   "title": "NeoSatoshi Card Recognition",
-  "description": "Identify trading and football cards in a photo, search and correct them, with Cardmarket prices.",
+  "description": "Identify trading, football and basketball cards in a photo, search and correct them, with Cardmarket prices.",
   "version": "0.10.0",
   "websiteUrl": "https://neosatoshi.com/developers/detection-api",
   "repository": {

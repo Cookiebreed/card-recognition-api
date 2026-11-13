@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiError, cardsApi, detect, detectStream, resolveApiKey, scrub, type DetectBody } from "./api.js";
 import { cardImages, MAX_IMAGES } from "./cardImages.js";
-import { FOOTBALL_MAX_IMAGE_BYTES, MAX_IMAGE_BYTES, SERVER_NAME, SERVER_VERSION, SEARCH_TCG_VALUES, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
+import { maxImageBytes, SERVER_NAME, SERVER_VERSION, SEARCH_TCG_VALUES, SUPPORTED_GAMES, TCG_VALUES } from "./constants.js";
 import { InputError, normalizeBase64Image, parseAllowedDirs, readImageFile, validateImageUrl } from "./images.js";
 import { summarize } from "./summary.js";
 import { csvRows, listImages, resolveFolder, stamp, toCsv, writeNew } from "./folder.js";
@@ -17,14 +17,14 @@ export interface ServerOptions {
 
 const RECOGNIZE_DESCRIPTION = [
   "Identify trading cards in a photo with the NeoSatoshi card recognition API.",
-  "Games: Pokémon (default), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game (English, Japanese), Cyberpunk TCG (English, French) and Riftbound (English; French and Chinese prints recognized without a price), several cards per photo (binder pages work, one game per photo), and football (soccer) cards with tcg \"football\" (Topps, Panini and other makers; one card front per photo, max 4 MB).",
+  "Games: Pokémon (default), One Piece, Disney Lorcana, Yu-Gi-Oh! TCG, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game (English, Japanese), Cyberpunk TCG (English, French) and Riftbound (English; French and Chinese prints recognized without a price), several cards per photo (binder pages work, one game per photo); football (soccer) cards with tcg \"football\" (Topps, Panini and other makers) and basketball cards with tcg \"basketball\" (NBA from Panini and Topps, mainly 2018-19 to 2026-27, and Panini EuroLeague from 2023-24; not WNBA, college, G League or NBL), several card fronts per photo (binder pages work, best up to about 20), max 4 MB.",
   "Returns per card: name, language, set, number, rarity, Cardmarket product ID, daily Cardmarket prices in EUR (TCGplayer USD where available), confidence and alternatives.",
-  "Football cards instead: the player, release (set, number), season, subset, teams, rookie flag, a sure flag, alternatives and the parallel (three candidates with print runs, a pick only when the recognizer is sure; a person should confirm it). No prices and no images for football yet; it takes about 6 to 25 seconds.",
+  "Football and basketball cards instead: the player, release (set, number), season, subset, teams, rookie flag, a sure flag, alternatives and the parallel (three candidates with print runs, a pick only when the recognizer is sure; a person should confirm it). No prices and no images for them yet; it takes about 6 to 25 seconds.",
   "Digimon (tcg \"digimon\"): recognised by card number and name; alternative arts share the number, so the printing comes from the picture or stays open (print_unconfirmed) with the printings as alternatives. TCGplayer prices only for English Digimon printings. Older Digimon products (the 1999 card game, the 2000 trading cards) are not recognised.",
   "Cyberpunk TCG (tcg \"cyberpunk\"): Beta (Kickstarter) and Retail base cards share the same art, only the β before the number tells them apart (beta flag, print_id WNCB-132 vs WNC-132), and their prices differ a lot; when the photo cannot tell, the printing stays open (print_unconfirmed) with the printings as alternatives. The finish is fixed per printing (finish, is_foil). TCGplayer prices only for English Cyberpunk cards.",
   "Riftbound (tcg \"riftbound\", the League of Legends TCG by Riot Games): detection only, search_cards, get_card and correct_card do not cover it. The printing is the set code + printed number (print_id OGN-066, OGN-066a alternate art, OGN-299* signed; variant Overnumbered, Signature, Prize Wall or Best Of); when the photo cannot tell it, the printing stays open (print_unconfirmed, card_id rb-c-<card_key>, no price) with the printings as priced alternatives to pick yourself. Common and Uncommon exist normal and foil (finish says normal: take prices.cardmarket_foil and prices.tcgplayer.foil for a foil copy), Rare and above foil only. French and Chinese prints (rb-fr-..., rb-zh-...) have no price (review reason language_not_listed).",
-  "Graded slabs (PSA, BGS, CGC, for football also SGC) fill graded with the grade read from the label. It does not grade card condition.",
-  "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB, football 4 MB), image_url (public https URL, forwarded to the API) or image_base64.",
+  "Graded slabs (PSA, BGS, CGC, for football and basketball also SGC) fill graded with the grade read from the label. It does not grade card condition.",
+  "Give exactly one image source: image_path (local .jpg/.jpeg/.png, max 12 MB, football and basketball 4 MB), image_url (public https URL, forwarded to the API) or image_base64.",
   "Uses the API key in NEOSATOSHI_API_KEY; without it, the public demo key is used (10 detections per day per network).",
   "One card usually takes about 4 seconds, about 10 to 12 seconds on the first request after a quiet period; with a progress token the cards are reported one by one while a binder page is read.",
   `include_images: true adds the catalog image of up to ${MAX_IMAGES} recognised cards, to compare them with the photo.`,
@@ -36,7 +36,7 @@ const SEARCH_DESCRIPTION = [
   "Without request_id it is the paid card search: 0.5 credits when it returns a card, nothing for no result.",
   "Query: q (a card name, at least 3 letters, optionally with the number like \"charizard 4/102\", or a printed code like OP01-003; Digimon: a card number alone like BT1-025 works; Cyberpunk: a name in English or French, or a printed number like B132), or set + number (Cyberpunk: set WNCB with number B132 or 132). Wildcards and set-only or number-only queries are refused.",
   "Not for Riftbound: it is detection only (the API answers 400 unsupported_tcg), and a Riftbound detection cannot be corrected.",
-  "Football (tcg \"football\"): q only, the player with optional set or season words (\"kane chrome 2023\"), no language, set or number, no prices yet; each result carries a ref for get_card. Football detections cannot be corrected yet.",
+  "Football and basketball (tcg \"football\", \"basketball\"): q only, the player with optional set or season words (\"kane chrome 2023\", \"wembanyama prizm 2023\"), no language, set or number, no prices yet; each result carries a ref for get_card. Football and basketball detections cannot be corrected yet.",
 ].join(" ");
 
 const CORRECT_DESCRIPTION = [
@@ -48,7 +48,7 @@ const CORRECT_DESCRIPTION = [
 const GET_DESCRIPTION = [
   "Get one card by its card_id (for example to refresh its price or resolve a stored id). 0.5 credits when the card exists, nothing for an unknown card.",
   "For a wrong detection use search_cards with request_id and correct_card instead: those are free.",
-  "Football: pass the ref of a search_cards result (same API key, within 24 hours); the card then comes with all parallels of its subset and their print runs. Without a valid ref the call is refused and free.",
+  "Football and basketball: pass the ref of a search_cards result (same API key, within 24 hours); the card then comes with all parallels of its subset and their print runs. Without a valid ref the call is refused and free.",
   "Not for Riftbound (detection only).",
 ].join(" ");
 
@@ -56,13 +56,13 @@ const EXPORT_DESCRIPTION = [
   "Export the cards of up to 20 detections (request_id of recognize_cards or recognize_folder, within 48 hours) as the same file the NeoSatoshi website exports, built by the website's own export code: your account's condition for new cards, corrections made with correct_card, your saved settings, price rules and templates.",
   "Formats: csv/json (custom export; preset = a saved preset id from list_export_presets, or fields and json_mode \"api\"/\"custom\"), tcgpowertools (the TCGPowerTools CSV for Cardmarket), shopify (the Shopify product CSV, prices in the store currency) and ebay (the eBay Seller Hub CSV for one eBay site).",
   "Price options for tcgpowertools, shopify and ebay, like the buttons of the website's pricing step: price_source, min_price, markup_percent and rounding (a markup or rounding replaces your saved price rules; 0 = no markup). tcgpowertools: comment. shopify: store_currency, variant_mode. ebay: marketplace, one_row_per_card. Cards that cannot be exported are named in the answer, never guessed.",
-  "Free (no credits). Needs your own API key (demo detections keep no cards) and exports enabled for the account. Football detections cannot be exported yet.",
+  "Free (no credits). Needs your own API key (demo detections keep no cards) and exports enabled for the account. Football and basketball detections cannot be exported yet.",
   "save_to_folder writes the file into a local folder (allowed by NEOSATOSHI_ALLOWED_DIRS, never overwrites); without it the file content comes back in the answer (up to 100 KB).",
 ].join(" ");
 
 const EXPORT_INLINE_MAX_CHARS = 100_000;
 
-const LANGUAGE = z.string().optional().describe("Card language, e.g. en, de, fr, it, es, pt, ja, ko, zh (per game; Digimon en or ja; Cyberpunk en or fr). Default: the detected card's language, else en. Leave it out for football.");
+const LANGUAGE = z.string().optional().describe("Card language, e.g. en, de, fr, it, es, pt, ja, ko, zh (per game; Digimon en or ja; Cyberpunk en or fr). Default: the detected card's language, else en. Leave it out for football and basketball.");
 
 function errorResult(text: string) {
   return { isError: true, content: [{ type: "text" as const, text }] };
@@ -83,7 +83,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         image_path: z
           .string()
           .optional()
-          .describe("Path to a local JPEG or PNG file (max 12 MB, football 4 MB). Absolute paths work best; ~ is expanded."),
+          .describe("Path to a local JPEG or PNG file (max 12 MB, football and basketball 4 MB). Absolute paths work best; ~ is expanded."),
         image_url: z
           .string()
           .optional()
@@ -91,15 +91,15 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         image_base64: z
           .string()
           .optional()
-          .describe("Base64-encoded JPEG or PNG (max 12 MB, football 4 MB). A data:image/...;base64, prefix is accepted."),
+          .describe("Base64-encoded JPEG or PNG (max 12 MB, football and basketball 4 MB). A data:image/...;base64, prefix is accepted."),
         tcg: z
           .enum(TCG_VALUES)
           .optional()
-          .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards. riftbound for Riftbound (detection only)."),
+          .describe("Which game the photo shows. Default: pokemon. football for football (soccer) cards, basketball for basketball cards. riftbound for Riftbound (detection only)."),
         include_images: z
           .boolean()
           .optional()
-          .describe(`Also return the catalog image of up to ${MAX_IMAGES} recognised cards (small images from our CDN). Default false. Football cards have none.`),
+          .describe(`Also return the catalog image of up to ${MAX_IMAGES} recognised cards (small images from our CDN). Default false. Football and basketball cards have none.`),
       },
       annotations: {
         title: "Recognize trading cards",
@@ -124,7 +124,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       const { key, isDemo } = resolveApiKey(env);
       try {
         const body: DetectBody = { tcg: args.tcg ?? "pokemon" };
-        const maxBytes = body.tcg === "football" ? FOOTBALL_MAX_IMAGE_BYTES : MAX_IMAGE_BYTES;
+        const maxBytes = maxImageBytes(body.tcg);
         if (args.image_path) {
           const bytes = await readImageFile(args.image_path, { allowedDirs, maxBytes });
           body.image = bytes.toString("base64");
@@ -198,7 +198,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
     async (args, extra) => {
       const { key, isDemo } = resolveApiKey(env);
       const tcg = args.tcg ?? "pokemon";
-      const maxBytes = tcg === "football" ? FOOTBALL_MAX_IMAGE_BYTES : MAX_IMAGE_BYTES;
+      const maxBytes = maxImageBytes(tcg);
       try {
         const { dir, files: all } = await listImages(args.folder, allowedDirs);
         const files = all.slice(0, args.max_files ?? 20);
@@ -284,7 +284,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         request_id: z.string().optional().describe("request_id of a detection: makes this a free correction search."),
         card_index: z.number().int().min(0).optional().describe("cards[].card_index of the card to correct (with request_id)."),
         tcg: z.enum(SEARCH_TCG_VALUES).optional().describe("Game. Required without request_id; default with it: the detected card's game. Riftbound is not in the card search."),
-        q: z.string().optional().describe("Card name (at least 3 letters), optionally with the number, or a printed code (Digimon: a card number like BT1-025; Cyberpunk: a printed number like B132). Football: the player, optionally with set or season words."),
+        q: z.string().optional().describe("Card name (at least 3 letters), optionally with the number, or a printed code (Digimon: a card number like BT1-025; Cyberpunk: a printed number like B132). Football and basketball: the player, optionally with set or season words."),
         set: z.string().optional().describe("Set id or code, together with number (Digimon: the set code, e.g. BT1 with number 025; Cyberpunk: e.g. WNCB with number B132 or 132)."),
         number: z.string().optional().describe("Card number, together with set (or q)."),
         language: LANGUAGE,
@@ -322,8 +322,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       description: GET_DESCRIPTION,
       inputSchema: {
         tcg: z.enum(SEARCH_TCG_VALUES).describe("Game of the card. Riftbound is not in the card search."),
-        card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key; Digimon: dg-... printing id, dg-c-<number> or the bare number BT1-025; Cyberpunk: cp-... printing id, cp-c-<card_key> or the bare card key v-streetkid; football: fb-...)."),
-        ref: z.string().optional().describe("Football only, required there: the ref of the search_cards result for this card_id (valid 24 hours)."),
+        card_id: z.string().describe("card_id (Yu-Gi-Oh!: passcode; Magic: oracle_id; SWU: printing id or card_key; Digimon: dg-... printing id, dg-c-<number> or the bare number BT1-025; Cyberpunk: cp-... printing id, cp-c-<card_key> or the bare card key v-streetkid; football: fb-...; basketball: bk-...)."),
+        ref: z.string().optional().describe("Football and basketball only, required there: the ref of the search_cards result for this card_id (valid 24 hours)."),
         language: LANGUAGE,
         cardmarket_id: z.number().int().positive().optional().describe("One Piece: picks a parallel printing. Pokémon: a possible_variants cardmarket_id of that card picks the special version (any other id: 400 unsupported_cardmarket_id)."),
         reverse_holo: z.boolean().optional().describe("Pokémon only: true returns the reverse holo price."),
@@ -447,6 +447,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
         `Cyberpunk TCG: ${g.limits.cyberpunk}.`,
         `Riftbound: ${g.limits.riftbound}.`,
         `Football: ${g.limits.football}.`,
+        `Basketball: ${g.limits.basketball}.`,
         `Card search: ${g.limits.card_search}.`,
         `Not supported: ${g.not_supported.join(", ")}. Docs: ${g.docs}`,
       );

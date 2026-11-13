@@ -3,8 +3,8 @@
   "name": "neosatoshi-card-recognition",
   "display_name": "NeoSatoshi Card Recognition",
   "version": "0.10.0",
-  "description": "Identify trading and football cards in a photo, search and correct them, with Cardmarket prices.",
-  "long_description": "Lets Claude identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, Riftbound and football (soccer) cards in a photo, a binder page or a whole folder, and returns set, number, rarity, Cardmarket product ID and daily prices. It can search the card catalog and correct a wrong card for free. Without an API key it uses the public demo key (10 detections per day per network). It identifies cards; it does not grade condition.",
+  "description": "Identify trading, football and basketball cards in a photo, search and correct them, with Cardmarket prices.",
+  "long_description": "Lets Claude identify Pokémon, One Piece, Disney Lorcana, Yu-Gi-Oh!, Magic: The Gathering, Star Wars: Unlimited, Digimon Card Game, Cyberpunk TCG, Riftbound, football (soccer) and basketball (NBA, EuroLeague) cards in a photo, a binder page or a whole folder, and returns set, number, rarity, Cardmarket product ID and daily prices. It can search the card catalog and correct a wrong card for free. Without an API key it uses the public demo key (10 detections per day per network). It identifies cards; it does not grade condition.",
   "author": {
     "name": "NeoSatoshi (NeoGen Solutions GmbH)",
     "email": "api@neosatoshi.com",
@@ -40,7 +40,7 @@
     { "name": "list_export_presets", "description": "Your saved export presets and the field ids." },
     { "name": "list_supported_games", "description": "Games, card languages and limits." }
   ],
-  "keywords": ["trading cards", "card recognition", "pokemon", "one piece", "lorcana", "yugioh", "magic the gathering", "star wars unlimited", "digimon", "cyberpunk tcg", "riftbound", "football cards", "cardmarket"],
+  "keywords": ["trading cards", "card recognition", "pokemon", "one piece", "lorcana", "yugioh", "magic the gathering", "star wars unlimited", "digimon", "cyberpunk tcg", "riftbound", "football cards", "basketball cards", "nba cards", "cardmarket"],
   "license": "MIT",
   "privacy_policies": ["https://neosatoshi.com/privacypolicy"],
   "compatibility": {

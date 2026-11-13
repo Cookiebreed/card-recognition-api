@@ -43,7 +43,7 @@ test("lists all tools", async () => {
   assert.match(tools.find((t) => t.name === "get_card").description, /0\.5 credits/);
   const rec = tools.find((t) => t.name === "recognize_cards");
   assert.match(rec.description, /demo key/);
-  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "riftbound", "football"]);
+  assert.deepEqual(rec.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "riftbound", "football", "basketball"]);
   assert.match(rec.description, /football/);
   assert.ok(tools.find((t) => t.name === "get_card").inputSchema.properties.ref, "get_card takes the football ref");
 });
@@ -206,6 +206,82 @@ test("list_supported_games names football and the card search prices", async () 
   assert.match(res.content[0].text, /tcg="football"/);
   assert.match(res.content[0].text, /Card search: .*0\.5 credits/);
   assert.match(res.content[0].text, /tcg="lorcana".*cards per photo: several/);
+});
+
+// Basketball works like football (same recognizer family and response shape, card_id bk-...). Shape modelled on the
+// football example response; the values are illustrative.
+const basketballCard = {
+  name: "Victor Wembanyama",
+  tcg: "basketball",
+  card_id: "bk-1f2-9c",
+  set: { id: "panini-prizm-basketball-2023-24", name: "2023-24 Panini Prizm Basketball", number: "136" },
+  season: "2023-24",
+  subset: "Base",
+  teams: ["San Antonio Spurs"],
+  rookie: true,
+  card_type: "player",
+  sure: true,
+  score: 6.2,
+  parallel: {
+    pick: null,
+    sure: false,
+    candidates: [
+      { name: "Silver Prizm", print_run: null },
+      { name: "Red White and Blue Prizm", print_run: null },
+      { name: "Base", print_run: null },
+    ],
+    serial_number: null,
+  },
+  prices: null,
+  images: { small: null, large: null },
+  alternatives: [{ card_id: "bk-1f3-0a", name: "Victor Wembanyama", set: { name: "2023-24 Panini Prizm Basketball", number: "136" } }],
+  graded: { grader: "PSA", grade: "10", cert_number: "12345678", label: null },
+  card_index: 0,
+};
+
+test("recognize_cards basketball: sends tcg basketball and summarizes it like a football card", async () => {
+  const calls = [];
+  const resp = { request_id: "req_bk1", count: 1, cards: [basketballCard], credits: { remaining: 50 } };
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, resp, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: img, tcg: "basketball" } });
+  assert.equal(res.isError, undefined);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "basketball", image: JPEG.toString("base64") });
+  const line = res.content[0].text.split("\n")[1];
+  assert.match(line, /Victor Wembanyama \| 2023-24 Panini Prizm Basketball #136 \| Base \| San Antonio Spurs \| rookie/);
+  assert.match(line, /parallel unsure: Silver Prizm, Red White and Blue Prizm, Base/);
+  assert.match(line, /graded PSA 10/);
+  assert.match(line, /1 alternatives \| no price yet/);
+  assert.doesNotMatch(line, /Cardmarket/);
+});
+
+test("recognize_cards basketball: the 4 MB cap applies like football", async () => {
+  const calls = [];
+  const big = path.join(dir, "big-bk.jpg");
+  fs.writeFileSync(big, Buffer.concat([JPEG, Buffer.alloc(4 * 1024 * 1024)]));
+  const client = await connect({}, fakeFetch(200, { cards: [] }, calls));
+  const res = await client.callTool({ name: "recognize_cards", arguments: { image_path: big, tcg: "basketball" } });
+  assert.equal(res.isError, true);
+  assert.match(res.content[0].text, /larger than 4 MB/);
+  assert.equal(calls.length, 0);
+});
+
+test("basketball search and lookup: q only, then get_card with the ref", async () => {
+  const calls = [];
+  const client = await connect({ NEOSATOSHI_API_KEY: "k_123456789" }, fakeFetch(200, { results: [{ card_id: "bk-1f2-9c", ref: "abc.def" }] }, calls));
+  await client.callTool({ name: "search_cards", arguments: { tcg: "basketball", q: "wembanyama prizm 2023" } });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { tcg: "basketball", q: "wembanyama prizm 2023" });
+  await client.callTool({ name: "get_card", arguments: { tcg: "basketball", card_id: "bk-1f2-9c", ref: "lz3k1.Ab_-x" } });
+  assert.equal(calls[1].url, `${CARDS_API_BASE}/cards/basketball/bk-1f2-9c?ref=lz3k1.Ab_-x`);
+});
+
+test("list_supported_games names basketball, and football and basketball read several cards per photo", async () => {
+  const client = await connect({}, fakeFetch(200, sample, []));
+  const res = await client.callTool({ name: "list_supported_games", arguments: {} });
+  const text = res.content[0].text;
+  assert.match(text, /Basketball cards: NBA and EuroLeague, Panini and Topps: tcg="basketball", .*cards per photo: several/);
+  assert.match(text, /tcg="football", .*cards per photo: several/);
+  assert.match(text, /Basketball: .*bk-.*not WNBA, college, G League or NBL/);
+  assert.doesNotMatch(text, /cards per photo: one/);
 });
 
 // Digimon card shape from the OpenAPI lookup example (GET /cardsApi/cards/digimon/dg-BT1-025_P1), shortened.
@@ -526,7 +602,7 @@ test("search_cards and get_card do not offer riftbound and refuse it without a c
   const { tools } = await client.listTools();
   for (const name of ["search_cards", "get_card"]) {
     const t = tools.find((x) => x.name === name);
-    assert.deepEqual(t.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football"]);
+    assert.deepEqual(t.inputSchema.properties.tcg.enum, ["pokemon", "onepiece", "lorcana", "yugioh", "magic", "star_wars_unlimited", "digimon", "cyberpunk", "football", "basketball"]);
     assert.match(t.description, /Not for Riftbound/);
   }
   assert.match(tools.find((x) => x.name === "correct_card").description, /Riftbound detections cannot be corrected/);

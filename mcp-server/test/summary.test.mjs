@@ -57,3 +57,25 @@ test("reasons already shown elsewhere on the line are not repeated", () => {
   assert.match(line, /review needed: low confidence;/);
   assert.equal(line.match(/print/g).length, 1);
 });
+
+test("a basketball card reads like a football card: player, release, parallel pick, no price", () => {
+  const card = {
+    name: "Victor Wembanyama",
+    tcg: "basketball",
+    card_id: "bk-1f2-9c",
+    set: { name: "2023-24 Panini Prizm Basketball", number: "136" },
+    subset: "Base",
+    teams: ["San Antonio Spurs"],
+    rookie: true,
+    sure: false,
+    parallel: { pick: { name: "Silver Prizm", print_run: null }, candidates: [], serial_number: null },
+    prices: null,
+    alternatives: [{ card_id: "bk-1f3-0a" }, { card_id: "bk-1f4-0b" }],
+    review: { needed: true, reasons: ["not_sure", "parallel_unconfirmed"], search: null },
+    card_index: 2,
+  };
+  assert.equal(
+    summarizeCard(card, 2, "req_bk"),
+    "3. (card_index 2) Victor Wembanyama | 2023-24 Panini Prizm Basketball #136 | Base | San Antonio Spurs | rookie | parallel Silver Prizm (suggested, confirm it) | not sure, check the alternatives | 2 alternatives | no price yet | review needed: parallel unconfirmed",
+  );
+});
